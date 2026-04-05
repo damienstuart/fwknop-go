@@ -1,0 +1,52 @@
+# .gitignore for golang projects.
+###############################################################################
+# Binaries
+*.exe
+*.o
+
+# Test binaries
+*.test
+
+# Dependencies (Go modules)
+/vendor/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Mac/OSX
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Coverage files
+*.out
+
+# Temporary files
+*~
+*-
+
+### Common omstools project-specific
+
+# Any tmp dir
+tmp/
+temp/
+
+# log files
+*.log
+
+# Config files
+.env
+*.env
+*.conf
+*.yml
+*.yaml
+
+### Project-specific
+
+# The generated dirs and files
+bin/
+_notes/
