@@ -48,6 +48,7 @@ fwknop-go/
 │   │   ├── convert.go   #   Legacy .fwknoprc to YAML converter
 │   │   ├── resolve.go   #   External IP resolution via HTTPS
 │   │   └── send.go      #   UDP packet sending
+│   ├── fwknop-convert/  # Legacy config conversion utility
 │   └── fwknopd/         # SPA server daemon
 │       ├── main.go      #   Entry point, daemon management
 │       ├── config.go    #   CLI flags, YAML config loading
@@ -125,7 +126,7 @@ fwknop [options]
 | `-f, --fw-timeout` | Firewall rule timeout in seconds |
 | `-T, --test` | Build the packet but don't send it |
 | `-k, --key-gen` | Generate random encryption + HMAC keys |
-| `--convert-rc` | Convert a legacy `.fwknoprc` to YAML |
+| `--stanza-list` | List stanzas in RC file |
 | `-v, --verbose` | Verbose output (repeatable) |
 
 Run `fwknop --help` for the full list.
@@ -163,10 +164,10 @@ fwknop -n production -R
 #### Migrating from legacy `.fwknoprc`
 
 If you have an existing C fwknop `.fwknoprc` file (INI-style `[stanza]` format),
-convert it to YAML:
+convert it to YAML using the `fwknop-convert` utility:
 
 ```bash
-fwknop --convert-rc ~/.fwknoprc > ~/.fwknoprc.yaml
+fwknop-convert --type client --input ~/.fwknoprc > ~/.fwknoprc.yaml
 ```
 
 ---
@@ -331,6 +332,27 @@ fmt.Printf("User: %s, Access: %s\n", msg.Username, msg.AccessMsg)
 | HMAC | MD5, SHA1, SHA256 (default), SHA384, SHA512, SHA3-256, SHA3-512 |
 
 See `go doc github.com/damienstuart/fwknop-go/fkospa` for the full API reference.
+
+---
+
+## Conversion Tool (`fwknop-convert`)
+
+A standalone utility for converting legacy C fwknop configuration files to YAML.
+
+### Usage
+
+```bash
+# Convert client .fwknoprc
+fwknop-convert --type client --input ~/.fwknoprc > ~/.fwknoprc.yaml
+
+# Convert server fwknopd.conf
+fwknop-convert --type server --input /etc/fwknop/fwknopd.conf > server.yaml
+
+# Convert access rules
+fwknop-convert --type access --input /etc/fwknop/access.conf > access.yaml
+```
+
+Unsupported keys (GPG, pcap, iptables-specific) produce warnings on stderr with suggestions for the equivalent Go configuration.
 
 ---
 

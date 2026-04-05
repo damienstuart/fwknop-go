@@ -381,3 +381,110 @@ func TestBuildTemplateContext(t *testing.T) {
 		t.Errorf("NATAccess = %q", ctx.NATAccess)
 	}
 }
+
+// --- Action template loading tests ---
+
+func TestLoadActionTemplate(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.yaml")
+	os.WriteFile(path, []byte("validate: \"which test\"\nopen: \"echo open\"\n"), 0600)
+
+	cfg, err := loadActionTemplate(path, "")
+	if err != nil {
+		t.Fatalf("loadActionTemplate error: %v", err)
+	}
+	if cfg.Validate != "which test" {
+		t.Errorf("Validate = %q, want %q", cfg.Validate, "which test")
+	}
+	if cfg.Open != "echo open" {
+		t.Errorf("Open = %q, want %q", cfg.Open, "echo open")
+	}
+}
+
+func TestLoadActionTemplateBareName(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "mytemplate.yaml"), []byte("open: \"echo hello\"\n"), 0600)
+
+	cfg, err := loadActionTemplate("mytemplate.yaml", dir)
+	if err != nil {
+		t.Fatalf("loadActionTemplate error: %v", err)
+	}
+	if cfg.Open != "echo hello" {
+		t.Errorf("Open = %q, want %q", cfg.Open, "echo hello")
+	}
+}
+
+func TestLoadActionTemplateAbsPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "abs.yaml")
+	os.WriteFile(path, []byte("close: \"echo close\"\n"), 0600)
+
+	cfg, err := loadActionTemplate(path, "/some/other/dir")
+	if err != nil {
+		t.Fatalf("loadActionTemplate error: %v", err)
+	}
+	if cfg.Close != "echo close" {
+		t.Errorf("Close = %q, want %q", cfg.Close, "echo close")
+	}
+}
+
+func TestLoadActionTemplateEmpty(t *testing.T) {
+	cfg, err := loadActionTemplate("", "/any/dir")
+	if err != nil {
+		t.Fatalf("loadActionTemplate error: %v", err)
+	}
+	if cfg != (actionsConfig{}) {
+		t.Error("empty template path should return zero config")
+	}
+}
+
+func TestLoadActionTemplateNotFound(t *testing.T) {
+	_, err := loadActionTemplate("/nonexistent/template.yaml", "")
+	if err == nil {
+		t.Error("expected error for missing template file")
+	}
+}
+
+func TestMergeActionsConfig(t *testing.T) {
+	base := actionsConfig{
+		Validate: "base validate",
+		Init:     "base init",
+		Open:     "base open",
+		Close:    "base close",
+	}
+	override := actionsConfig{
+		Open:  "override open",
+		Close: "override close",
+	}
+
+	result := mergeActionsConfig(base, override)
+
+	if result.Validate != "base validate" {
+		t.Errorf("Validate should come from base, got %q", result.Validate)
+	}
+	if result.Init != "base init" {
+		t.Errorf("Init should come from base, got %q", result.Init)
+	}
+	if result.Open != "override open" {
+		t.Errorf("Open should come from override, got %q", result.Open)
+	}
+	if result.Close != "override close" {
+		t.Errorf("Close should come from override, got %q", result.Close)
+	}
+}
+
+func TestMergeActionsConfigEmptyOverride(t *testing.T) {
+	base := actionsConfig{
+		Validate: "validate",
+		Init:     "init",
+		Open:     "open",
+		Close:    "close",
+		Shutdown: "shutdown",
+	}
+
+	result := mergeActionsConfig(base, actionsConfig{})
+
+	if result != base {
+		t.Error("empty override should return base unchanged")
+	}
+}

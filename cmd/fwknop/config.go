@@ -60,7 +60,6 @@ type clientConfig struct {
 	NamedConfig  string `koanf:"named_config"`
 	RCFile       string `koanf:"rc_file"`
 	NoRCFile     bool   `koanf:"no_rc_file"`
-	ConvertRC    string `koanf:"convert_rc"`
 
 	// Modes
 	Test      bool `koanf:"test"`
@@ -118,7 +117,6 @@ func setupFlags() *pflag.FlagSet {
 	f.Bool("no-rc-file", false, "Skip .fwknoprc")
 	f.Bool("save-rc-stanza", false, "Save args to rc stanza")
 	f.Bool("stanza-list", false, "List stanzas in rc file")
-	f.String("convert-rc", "", "Convert legacy .fwknoprc to YAML and print to stdout")
 
 	// Modes
 	f.BoolP("test", "T", false, "Build packet but don't send")

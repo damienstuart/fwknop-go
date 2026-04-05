@@ -86,8 +86,8 @@ func TestLoadRCFileLegacyFormatError(t *testing.T) {
 	if !strings.Contains(err.Error(), "no longer supported") {
 		t.Errorf("expected 'no longer supported' message, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "--convert-rc") {
-		t.Errorf("expected '--convert-rc' hint in error, got: %v", err)
+	if !strings.Contains(err.Error(), "fwknop-convert") {
+		t.Errorf("expected 'fwknop-convert' hint in error, got: %v", err)
 	}
 }
 

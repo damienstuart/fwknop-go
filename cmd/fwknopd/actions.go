@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
 
 	"github.com/damienstuart/fwknop-go/fkospa"
+	"gopkg.in/yaml.v3"
 )
 
 // actionsConfig holds command templates for each lifecycle step.
@@ -172,10 +176,14 @@ func (am *actionsManager) ExecuteCommand(cmdStr string, user string) error {
 	defer cancel()
 
 	var cmd *exec.Cmd
-	if user != "" {
+	if user != "" && runtime.GOOS != "windows" {
 		cmd = exec.CommandContext(ctx, "/bin/sh", "-c", fmt.Sprintf("su -c '%s' %s", cmdStr, user))
 	} else {
-		cmd = exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr)
+		if runtime.GOOS == "windows" {
+			cmd = exec.CommandContext(ctx, "cmd", "/C", cmdStr)
+		} else {
+			cmd = exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr)
+		}
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -312,6 +320,57 @@ func parseAccessMsg(accessMsg string) (proto, port string) {
 	return protoPort[:slashIdx], protoPort[slashIdx+1:]
 }
 
+// loadActionTemplate reads an action template file and returns its config.
+// If templatePath is empty, returns a zero config. If templatePath is a bare
+// name (no path separators), it is resolved relative to actionDir.
+func loadActionTemplate(templatePath, actionDir string) (actionsConfig, error) {
+	if templatePath == "" {
+		return actionsConfig{}, nil
+	}
+
+	// Bare name → join with actionDir.
+	if filepath.Base(templatePath) == templatePath {
+		templatePath = filepath.Join(actionDir, templatePath)
+	}
+
+	data, err := os.ReadFile(templatePath)
+	if err != nil {
+		return actionsConfig{}, fmt.Errorf("reading action template %s: %w", templatePath, err)
+	}
+
+	var cfg actionsConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return actionsConfig{}, fmt.Errorf("parsing action template %s: %w", templatePath, err)
+	}
+
+	return cfg, nil
+}
+
+// mergeActionsConfig merges two configs. The override config's non-empty
+// fields take precedence over the base config.
+func mergeActionsConfig(base, override actionsConfig) actionsConfig {
+	result := base
+	if override.Validate != "" {
+		result.Validate = override.Validate
+	}
+	if override.Init != "" {
+		result.Init = override.Init
+	}
+	if override.Check != "" {
+		result.Check = override.Check
+	}
+	if override.Open != "" {
+		result.Open = override.Open
+	}
+	if override.Close != "" {
+		result.Close = override.Close
+	}
+	if override.Shutdown != "" {
+		result.Shutdown = override.Shutdown
+	}
+	return result
+}
+
 // renderTemplate executes a template with the given context and returns the result.
 func renderTemplate(tmpl *template.Template, ctx templateContext) (string, error) {
 	var buf bytes.Buffer
@@ -321,9 +380,10 @@ func renderTemplate(tmpl *template.Template, ctx templateContext) (string, error
 	return buf.String(), nil
 }
 
-// runCommand executes a command string via /bin/sh -c and returns any error.
+// runCommand executes a command string via the system shell and returns any error.
+// Uses /bin/sh -c on Unix and cmd /C on Windows.
 func runCommand(cmdStr string) error {
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+	cmd := shellCommand(cmdStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if len(output) > 0 {
@@ -332,4 +392,12 @@ func runCommand(cmdStr string) error {
 		return err
 	}
 	return nil
+}
+
+// shellCommand returns an exec.Cmd that runs cmdStr via the platform shell.
+func shellCommand(cmdStr string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.Command("cmd", "/C", cmdStr)
+	}
+	return exec.Command("/bin/sh", "-c", cmdStr)
 }

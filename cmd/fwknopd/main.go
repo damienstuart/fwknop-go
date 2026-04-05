@@ -71,6 +71,16 @@ func run(args []string) error {
 	replay := newReplayCache(replayTTL)
 	logger.Info("Replay cache initialized (TTL: %s)", replayTTL)
 
+	// Load action template if specified.
+	if cfg.ActionTemplate != "" {
+		templateCfg, err := loadActionTemplate(cfg.ActionTemplate, cfg.ActionDir)
+		if err != nil {
+			return err
+		}
+		cfg.Actions = mergeActionsConfig(templateCfg, cfg.Actions)
+		logger.Info("Loaded action template: %s", cfg.ActionTemplate)
+	}
+
 	// Set up actions manager.
 	am, err := newActionsManager(cfg.Actions, logger)
 	if err != nil {

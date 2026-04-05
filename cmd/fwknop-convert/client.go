@@ -10,21 +10,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// convertLegacyRC reads a legacy .fwknoprc file and returns YAML equivalent.
-func convertLegacyRC(path string) ([]byte, error) {
+// convertClient reads a legacy .fwknoprc file and prints YAML to stdout.
+func convertClient(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading rc file: %w", err)
+		return fmt.Errorf("reading rc file: %w", err)
 	}
 
-	stanzas, warnings := parseLegacyStanzas(data)
+	stanzas, warnings := parseClientStanzas(data)
 
 	for _, w := range warnings {
 		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 	}
 
 	if len(stanzas) == 0 {
-		return nil, fmt.Errorf("no stanzas found in %s", path)
+		return fmt.Errorf("no stanzas found in %s", path)
 	}
 
 	// Build ordered output: "default" first, then remaining sorted.
@@ -55,32 +55,15 @@ func convertLegacyRC(path string) ([]byte, error) {
 	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{ordered}}
 	out, err := yaml.Marshal(doc)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling YAML: %w", err)
+		return fmt.Errorf("marshalling YAML: %w", err)
 	}
 
-	return out, nil
+	fmt.Print(string(out))
+	return nil
 }
 
-// mapToYAMLNode converts a map to a yaml.Node with sorted keys.
-func mapToYAMLNode(m map[string]interface{}) *yaml.Node {
-	node := &yaml.Node{Kind: yaml.MappingNode}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		node.Content = append(node.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: k},
-			&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%v", m[k])},
-		)
-	}
-	return node
-}
-
-// parseLegacyStanzas parses the legacy KEY VALUE stanza format.
-// Returns the parsed stanzas and any warnings for skipped keys.
-func parseLegacyStanzas(data []byte) (map[string]map[string]interface{}, []string) {
+// parseClientStanzas parses the legacy KEY VALUE stanza format.
+func parseClientStanzas(data []byte) (map[string]map[string]interface{}, []string) {
 	stanzas := make(map[string]map[string]interface{})
 	var warnings []string
 	currentStanza := "default"
@@ -90,7 +73,6 @@ func parseLegacyStanzas(data []byte) (map[string]map[string]interface{}, []strin
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		// Skip empty lines and comments.
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
 			continue
 		}
@@ -107,7 +89,6 @@ func parseLegacyStanzas(data []byte) (map[string]map[string]interface{}, []strin
 		// KEY VALUE pair — split on first whitespace.
 		parts := strings.SplitN(line, " ", 2)
 		if len(parts) < 2 {
-			// Try tab separator.
 			parts = strings.SplitN(line, "\t", 2)
 		}
 		if len(parts) < 2 {
@@ -117,8 +98,7 @@ func parseLegacyStanzas(data []byte) (map[string]map[string]interface{}, []strin
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		// Map legacy C-style keys to our config keys.
-		mappedKey := mapLegacyKey(key)
+		mappedKey := mapClientKey(key)
 		if mappedKey == "" {
 			warnings = append(warnings, fmt.Sprintf("skipping unsupported key %s in stanza [%s]", key, currentStanza))
 			continue
@@ -129,8 +109,8 @@ func parseLegacyStanzas(data []byte) (map[string]map[string]interface{}, []strin
 	return stanzas, warnings
 }
 
-// mapLegacyKey converts C-style .fwknoprc keys to our config key names.
-func mapLegacyKey(key string) string {
+// mapClientKey converts C-style .fwknoprc keys to Go config key names.
+func mapClientKey(key string) string {
 	switch strings.ToUpper(key) {
 	case "SPA_SERVER":
 		return "destination"
@@ -175,6 +155,6 @@ func mapLegacyKey(key string) string {
 	case "VERBOSE":
 		return "verbose"
 	default:
-		return "" // Unknown key, skip
+		return ""
 	}
 }

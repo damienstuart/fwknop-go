@@ -19,7 +19,7 @@ func loadRCFile(k *koanf.Koanf, path string, stanza string) error {
 	if err := loadRCYAML(k, data, stanza); err != nil {
 		if looksLikeLegacy(data) {
 			return fmt.Errorf("legacy .fwknoprc format is no longer supported; "+
-				"convert with: fwknop --convert-rc %s", path)
+				"convert with: fwknop-convert --type client --input %s", path)
 		}
 		return err
 	}
@@ -89,7 +89,7 @@ func listStanzas(path string) error {
 
 	if looksLikeLegacy(data) {
 		return fmt.Errorf("legacy .fwknoprc format is no longer supported; "+
-			"convert with: fwknop --convert-rc %s", path)
+			"convert with: fwknop-convert --type client --input %s", path)
 	}
 
 	var stanzas map[string]interface{}

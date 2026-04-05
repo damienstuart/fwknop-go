@@ -22,6 +22,7 @@ const (
 	defaultUDPPort    = 62201
 	defaultBindAddr   = "0.0.0.0"
 	defaultMaxAge     = 120
+	defaultActionDir  = "/etc/fwknop/actions"
 	serverVersion     = "0.1.0"
 )
 
@@ -45,7 +46,9 @@ type serverConfig struct {
 	MaxSPAPacketAge int `koanf:"max_spa_packet_age"`
 
 	// Actions
-	Actions actionsConfig `koanf:"actions"`
+	Actions        actionsConfig `koanf:"actions"`
+	ActionTemplate string        `koanf:"action_template"`
+	ActionDir      string        `koanf:"action_dir"`
 
 	// Files (from CLI)
 	ConfigFile string `koanf:"config_file"`
@@ -111,6 +114,7 @@ func loadServerConfig(args []string) (*serverConfig, error) {
 	k.Set("pid_file", defaultPIDFile)
 	k.Set("run_dir", defaultRunDir)
 	k.Set("max_spa_packet_age", defaultMaxAge)
+	k.Set("action_dir", defaultActionDir)
 	k.Set("config_file", defaultConfigFile)
 	k.Set("access_file", defaultAccessFile)
 

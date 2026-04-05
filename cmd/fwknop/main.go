@@ -35,15 +35,6 @@ func run(args []string) error {
 		return runKeyGen()
 	}
 
-	if cfg.ConvertRC != "" {
-		yamlData, err := convertLegacyRC(cfg.ConvertRC)
-		if err != nil {
-			return fmt.Errorf("converting rc file: %w", err)
-		}
-		fmt.Print(string(yamlData))
-		return nil
-	}
-
 	if cfg.ListStanzas {
 		rcPath := cfg.RCFile
 		if rcPath == "" {
