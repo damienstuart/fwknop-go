@@ -10,22 +10,22 @@ import (
 	"github.com/damienstuart/fwknop-go/fkospa"
 )
 
-func testFWLogger() *spaLogger {
+func testActionLogger() *spaLogger {
 	return &spaLogger{
 		fileLogger: nil, // suppress output in tests
 		verbose:    true,
 	}
 }
 
-func TestNewFirewallManagerParsesTemplates(t *testing.T) {
-	cfg := firewallConfig{
+func TestNewActionsManagerParsesTemplates(t *testing.T) {
+	cfg := actionsConfig{
 		Check: "iptables -C INPUT -s {{.SourceIP}} -j ACCEPT",
 		Open:  "iptables -A INPUT -s {{.SourceIP}} -j ACCEPT",
 		Close: "iptables -D INPUT -s {{.SourceIP}} -j ACCEPT",
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 	if fm.checkTmpl == nil {
 		t.Error("check template should be parsed")
@@ -38,20 +38,20 @@ func TestNewFirewallManagerParsesTemplates(t *testing.T) {
 	}
 }
 
-func TestNewFirewallManagerInvalidTemplate(t *testing.T) {
-	cfg := firewallConfig{
+func TestNewActionsManagerInvalidTemplate(t *testing.T) {
+	cfg := actionsConfig{
 		Open: "{{.Invalid",
 	}
-	_, err := newFirewallManager(cfg, testFWLogger())
+	_, err := newActionsManager(cfg, testActionLogger())
 	if err == nil {
 		t.Error("expected error for invalid template, got nil")
 	}
 }
 
-func TestNewFirewallManagerEmptyConfig(t *testing.T) {
-	fm, err := newFirewallManager(firewallConfig{}, testFWLogger())
+func TestNewActionsManagerEmptyConfig(t *testing.T) {
+	fm, err := newActionsManager(actionsConfig{}, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 	if fm.checkTmpl != nil || fm.openTmpl != nil || fm.closeTmpl != nil {
 		t.Error("empty config should produce nil templates")
@@ -59,31 +59,31 @@ func TestNewFirewallManagerEmptyConfig(t *testing.T) {
 }
 
 func TestValidateSuccess(t *testing.T) {
-	cfg := firewallConfig{Validate: "true"}
-	fm, _ := newFirewallManager(cfg, testFWLogger())
+	cfg := actionsConfig{Validate: "true"}
+	fm, _ := newActionsManager(cfg, testActionLogger())
 	if err := fm.Validate(); err != nil {
 		t.Errorf("Validate error: %v", err)
 	}
 }
 
 func TestValidateFailure(t *testing.T) {
-	cfg := firewallConfig{Validate: "false"}
-	fm, _ := newFirewallManager(cfg, testFWLogger())
+	cfg := actionsConfig{Validate: "false"}
+	fm, _ := newActionsManager(cfg, testActionLogger())
 	if err := fm.Validate(); err == nil {
 		t.Error("expected Validate to fail")
 	}
 }
 
 func TestValidateEmpty(t *testing.T) {
-	fm, _ := newFirewallManager(firewallConfig{}, testFWLogger())
+	fm, _ := newActionsManager(actionsConfig{}, testActionLogger())
 	if err := fm.Validate(); err != nil {
 		t.Errorf("empty Validate should succeed: %v", err)
 	}
 }
 
 func TestInitSuccess(t *testing.T) {
-	cfg := firewallConfig{Init: "true"}
-	fm, _ := newFirewallManager(cfg, testFWLogger())
+	cfg := actionsConfig{Init: "true"}
+	fm, _ := newActionsManager(cfg, testActionLogger())
 	if err := fm.Init(); err != nil {
 		t.Errorf("Init error: %v", err)
 	}
@@ -93,13 +93,13 @@ func TestOpenRuleWithEchoCommands(t *testing.T) {
 	dir := t.TempDir()
 	openLog := filepath.Join(dir, "open.log")
 
-	cfg := firewallConfig{
+	cfg := actionsConfig{
 		Open:  "echo {{.SourceIP}} {{.Proto}} {{.Port}} >> " + openLog,
 		Close: "echo close {{.SourceIP}} >> " + filepath.Join(dir, "close.log"),
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	ctx := templateContext{
@@ -138,14 +138,14 @@ func TestCheckSkipsOpen(t *testing.T) {
 	dir := t.TempDir()
 	openLog := filepath.Join(dir, "open.log")
 
-	cfg := firewallConfig{
+	cfg := actionsConfig{
 		Check: "true", // exit 0 → rule exists
 		Open:  "echo opened >> " + openLog,
 		Close: "true",
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	ctx := templateContext{
@@ -171,14 +171,14 @@ func TestCheckFailsProceeds(t *testing.T) {
 	dir := t.TempDir()
 	openLog := filepath.Join(dir, "open.log")
 
-	cfg := firewallConfig{
+	cfg := actionsConfig{
 		Check: "false", // exit 1 → rule doesn't exist
 		Open:  "echo opened >> " + openLog,
 		Close: "true",
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	ctx := templateContext{
@@ -201,13 +201,13 @@ func TestCheckFailsProceeds(t *testing.T) {
 }
 
 func TestTimerRefreshOnDuplicateRule(t *testing.T) {
-	cfg := firewallConfig{
+	cfg := actionsConfig{
 		Open:  "true",
 		Close: "true",
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	ctx := templateContext{
@@ -232,14 +232,14 @@ func TestShutdownClosesAllRules(t *testing.T) {
 	dir := t.TempDir()
 	closeLog := filepath.Join(dir, "close.log")
 
-	cfg := firewallConfig{
+	cfg := actionsConfig{
 		Open:     "true",
 		Close:    "echo close {{.SourceIP}} >> " + closeLog,
 		Shutdown: "echo shutdown >> " + filepath.Join(dir, "shutdown.log"),
 	}
-	fm, err := newFirewallManager(cfg, testFWLogger())
+	fm, err := newActionsManager(cfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	// Open two rules.
@@ -271,14 +271,14 @@ func TestShutdownClosesAllRules(t *testing.T) {
 }
 
 func TestExecuteCommand(t *testing.T) {
-	fm, _ := newFirewallManager(firewallConfig{}, testFWLogger())
+	fm, _ := newActionsManager(actionsConfig{}, testActionLogger())
 	if err := fm.ExecuteCommand("true", ""); err != nil {
 		t.Errorf("ExecuteCommand error: %v", err)
 	}
 }
 
 func TestExecuteCommandFailure(t *testing.T) {
-	fm, _ := newFirewallManager(firewallConfig{}, testFWLogger())
+	fm, _ := newActionsManager(actionsConfig{}, testActionLogger())
 	if err := fm.ExecuteCommand("false", ""); err == nil {
 		t.Error("expected ExecuteCommand to fail")
 	}
@@ -330,7 +330,7 @@ func TestAllowsPort(t *testing.T) {
 }
 
 func TestEffectiveTimeout(t *testing.T) {
-	stanza := &accessStanza{FWAccessTimeout: 30, MaxFWTimeout: 120}
+	stanza := &accessStanza{AccessTimeout: 30, MaxAccessTimeout: 120}
 
 	tests := []struct {
 		clientTimeout uint32
@@ -358,7 +358,7 @@ func TestBuildTemplateContext(t *testing.T) {
 		NATAccess:     "192.168.1.100,22",
 		ClientTimeout: 60,
 	}
-	stanza := &accessStanza{FWAccessTimeout: 30, MaxFWTimeout: 120}
+	stanza := &accessStanza{AccessTimeout: 30, MaxAccessTimeout: 120}
 
 	ctx := buildTemplateContext(msg, "10.0.0.1", stanza)
 

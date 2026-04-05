@@ -12,8 +12,8 @@
   key_base64: "ADMIN_BASE64_ENCRYPTION_KEY"
   hmac_key_base64: "ADMIN_BASE64_HMAC_KEY"
   hmac_digest_type: sha256
-  fw_access_timeout: 120
-  max_fw_timeout: 300
+  access_timeout: 120
+  max_access_timeout: 300
   require_username: "admin"
   require_source_address: true
 
@@ -24,8 +24,8 @@
   key_base64: "GENERAL_BASE64_ENCRYPTION_KEY"
   hmac_key_base64: "GENERAL_BASE64_HMAC_KEY"
   hmac_digest_type: sha256
-  fw_access_timeout: 30
-  max_fw_timeout: 60
+  access_timeout: 30
+  max_access_timeout: 60
 
 # Command execution stanza — restricted to a specific host.
 - source: "192.168.1.100/32"

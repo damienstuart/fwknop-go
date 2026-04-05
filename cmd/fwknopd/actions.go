@@ -13,9 +13,9 @@ import (
 	"github.com/damienstuart/fwknop-go/fkospa"
 )
 
-// firewallConfig holds command templates for each lifecycle step.
+// actionsConfig holds command templates for each lifecycle step.
 // All fields are optional — omit or leave empty to skip that step.
-type firewallConfig struct {
+type actionsConfig struct {
 	Validate string `koanf:"validate" yaml:"validate"`
 	Init     string `koanf:"init"     yaml:"init"`
 	Check    string `koanf:"check"    yaml:"check"`
@@ -36,15 +36,15 @@ type templateContext struct {
 	NATAccess string // NAT access string (if present)
 }
 
-// activeRule tracks a firewall rule that was opened and will be closed on timeout.
+// activeRule tracks a action rule that was opened and will be closed on timeout.
 type activeRule struct {
 	ctx   templateContext
 	timer *time.Timer
 }
 
-// firewallManager manages firewall command execution and rule lifecycle.
-type firewallManager struct {
-	cfg         firewallConfig
+// actionsManager manages action command execution and rule lifecycle.
+type actionsManager struct {
+	cfg         actionsConfig
 	logger      *spaLogger
 	mu          sync.Mutex
 	activeRules map[string]*activeRule // key: "srcIP/proto/port"
@@ -53,10 +53,10 @@ type firewallManager struct {
 	closeTmpl   *template.Template
 }
 
-// newFirewallManager creates and initializes a firewall manager.
+// newActionsManager creates and initializes a action manager.
 // Returns an error if any command template fails to parse.
-func newFirewallManager(cfg firewallConfig, logger *spaLogger) (*firewallManager, error) {
-	fm := &firewallManager{
+func newActionsManager(cfg actionsConfig, logger *spaLogger) (*actionsManager, error) {
+	am := &actionsManager{
 		cfg:         cfg,
 		logger:      logger,
 		activeRules: make(map[string]*activeRule),
@@ -64,110 +64,110 @@ func newFirewallManager(cfg firewallConfig, logger *spaLogger) (*firewallManager
 
 	var err error
 	if cfg.Check != "" {
-		fm.checkTmpl, err = template.New("check").Parse(cfg.Check)
+		am.checkTmpl, err = template.New("check").Parse(cfg.Check)
 		if err != nil {
 			return nil, fmt.Errorf("parsing check template: %w", err)
 		}
 	}
 	if cfg.Open != "" {
-		fm.openTmpl, err = template.New("open").Parse(cfg.Open)
+		am.openTmpl, err = template.New("open").Parse(cfg.Open)
 		if err != nil {
 			return nil, fmt.Errorf("parsing open template: %w", err)
 		}
 	}
 	if cfg.Close != "" {
-		fm.closeTmpl, err = template.New("close").Parse(cfg.Close)
+		am.closeTmpl, err = template.New("close").Parse(cfg.Close)
 		if err != nil {
 			return nil, fmt.Errorf("parsing close template: %w", err)
 		}
 	}
 
-	return fm, nil
+	return am, nil
 }
 
 // Validate executes the validate command to verify required tools exist.
 // Returns an error if the command fails (non-zero exit).
-func (fm *firewallManager) Validate() error {
-	if fm.cfg.Validate == "" {
+func (am *actionsManager) Validate() error {
+	if am.cfg.Validate == "" {
 		return nil
 	}
-	fm.logger.Info("Running firewall validate command...")
-	if err := runCommand(fm.cfg.Validate); err != nil {
-		return fmt.Errorf("firewall validate failed: %w", err)
+	am.logger.Info("Running action validate command...")
+	if err := runCommand(am.cfg.Validate); err != nil {
+		return fmt.Errorf("action validate failed: %w", err)
 	}
 	return nil
 }
 
-// Init executes the init command to set up firewall chains/sets.
-func (fm *firewallManager) Init() error {
-	if fm.cfg.Init == "" {
+// Init executes the init command to set up action chains/sets.
+func (am *actionsManager) Init() error {
+	if am.cfg.Init == "" {
 		return nil
 	}
-	fm.logger.Info("Running firewall init command...")
-	if err := runCommand(fm.cfg.Init); err != nil {
-		return fmt.Errorf("firewall init failed: %w", err)
+	am.logger.Info("Running action init command...")
+	if err := runCommand(am.cfg.Init); err != nil {
+		return fmt.Errorf("action init failed: %w", err)
 	}
 	return nil
 }
 
 // OpenRule checks whether a rule already exists, opens it if not, and schedules
 // a close timer. If a rule with the same key already exists, its timer is reset.
-func (fm *firewallManager) OpenRule(ctx templateContext) error {
+func (am *actionsManager) OpenRule(ctx templateContext) error {
 	ruleKey := fmt.Sprintf("%s/%s/%s", ctx.SourceIP, ctx.Proto, ctx.Port)
 
 	// Check if rule already exists.
-	if fm.checkTmpl != nil {
-		cmd, err := renderTemplate(fm.checkTmpl, ctx)
+	if am.checkTmpl != nil {
+		cmd, err := renderTemplate(am.checkTmpl, ctx)
 		if err != nil {
 			return fmt.Errorf("rendering check template: %w", err)
 		}
 		if err := runCommand(cmd); err == nil {
-			fm.logger.Info("Rule already exists for %s, refreshing timeout", ruleKey)
-			fm.refreshTimer(ruleKey, ctx)
+			am.logger.Info("Rule already exists for %s, refreshing timeout", ruleKey)
+			am.refreshTimer(ruleKey, ctx)
 			return nil
 		}
 		// Non-zero exit means rule doesn't exist — proceed to open.
 	}
 
 	// Open the rule.
-	if fm.openTmpl != nil {
-		cmd, err := renderTemplate(fm.openTmpl, ctx)
+	if am.openTmpl != nil {
+		cmd, err := renderTemplate(am.openTmpl, ctx)
 		if err != nil {
 			return fmt.Errorf("rendering open template: %w", err)
 		}
 		if err := runCommand(cmd); err != nil {
 			return fmt.Errorf("open command failed for %s: %w", ruleKey, err)
 		}
-		fm.logger.Info("Opened firewall rule for %s (timeout: %ds)", ruleKey, ctx.Timeout)
+		am.logger.Info("Opened action rule for %s (timeout: %ds)", ruleKey, ctx.Timeout)
 	}
 
 	// Schedule close timer.
-	fm.scheduleClose(ruleKey, ctx)
+	am.scheduleClose(ruleKey, ctx)
 	return nil
 }
 
 // CloseRule executes the close command and removes the rule from tracking.
-func (fm *firewallManager) CloseRule(ctx templateContext) {
+func (am *actionsManager) CloseRule(ctx templateContext) {
 	ruleKey := fmt.Sprintf("%s/%s/%s", ctx.SourceIP, ctx.Proto, ctx.Port)
 
-	if fm.closeTmpl != nil {
-		cmd, err := renderTemplate(fm.closeTmpl, ctx)
+	if am.closeTmpl != nil {
+		cmd, err := renderTemplate(am.closeTmpl, ctx)
 		if err != nil {
-			fm.logger.Error("Rendering close template for %s: %v", ruleKey, err)
+			am.logger.Error("Rendering close template for %s: %v", ruleKey, err)
 		} else if err := runCommand(cmd); err != nil {
-			fm.logger.Error("Close command failed for %s: %v", ruleKey, err)
+			am.logger.Error("Close command failed for %s: %v", ruleKey, err)
 		} else {
-			fm.logger.Info("Closed firewall rule for %s", ruleKey)
+			am.logger.Info("Closed action rule for %s", ruleKey)
 		}
 	}
 
-	fm.mu.Lock()
-	delete(fm.activeRules, ruleKey)
-	fm.mu.Unlock()
+	am.mu.Lock()
+	delete(am.activeRules, ruleKey)
+	am.mu.Unlock()
 }
 
 // ExecuteCommand runs a command from a CommandMsg SPA request.
-func (fm *firewallManager) ExecuteCommand(cmdStr string, user string) error {
+func (am *actionsManager) ExecuteCommand(cmdStr string, user string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -180,77 +180,77 @@ func (fm *firewallManager) ExecuteCommand(cmdStr string, user string) error {
 
 	output, err := cmd.CombinedOutput()
 	if len(output) > 0 {
-		fm.logger.Info("Command output: %s", strings.TrimSpace(string(output)))
+		am.logger.Info("Command output: %s", strings.TrimSpace(string(output)))
 	}
 	return err
 }
 
 // Shutdown stops all pending timers, closes all active rules, and runs the
 // shutdown command template.
-func (fm *firewallManager) Shutdown() {
-	fm.mu.Lock()
-	rules := make(map[string]*activeRule, len(fm.activeRules))
-	for k, v := range fm.activeRules {
+func (am *actionsManager) Shutdown() {
+	am.mu.Lock()
+	rules := make(map[string]*activeRule, len(am.activeRules))
+	for k, v := range am.activeRules {
 		rules[k] = v
 		v.timer.Stop()
 	}
-	fm.activeRules = make(map[string]*activeRule)
-	fm.mu.Unlock()
+	am.activeRules = make(map[string]*activeRule)
+	am.mu.Unlock()
 
 	// Close each active rule individually.
 	for ruleKey, rule := range rules {
-		if fm.closeTmpl != nil {
-			cmd, err := renderTemplate(fm.closeTmpl, rule.ctx)
+		if am.closeTmpl != nil {
+			cmd, err := renderTemplate(am.closeTmpl, rule.ctx)
 			if err != nil {
-				fm.logger.Error("Rendering close template for %s during shutdown: %v", ruleKey, err)
+				am.logger.Error("Rendering close template for %s during shutdown: %v", ruleKey, err)
 				continue
 			}
 			if err := runCommand(cmd); err != nil {
-				fm.logger.Error("Close command failed for %s during shutdown: %v", ruleKey, err)
+				am.logger.Error("Close command failed for %s during shutdown: %v", ruleKey, err)
 			} else {
-				fm.logger.Info("Closed firewall rule for %s (shutdown)", ruleKey)
+				am.logger.Info("Closed action rule for %s (shutdown)", ruleKey)
 			}
 		}
 	}
 
 	// Run the shutdown template (e.g., flush chains).
-	if fm.cfg.Shutdown != "" {
-		fm.logger.Info("Running firewall shutdown command...")
-		if err := runCommand(fm.cfg.Shutdown); err != nil {
-			fm.logger.Error("Firewall shutdown command failed: %v", err)
+	if am.cfg.Shutdown != "" {
+		am.logger.Info("Running action shutdown command...")
+		if err := runCommand(am.cfg.Shutdown); err != nil {
+			am.logger.Error("Action shutdown command failed: %v", err)
 		}
 	}
 }
 
-// ActiveRuleCount returns the number of currently active firewall rules.
-func (fm *firewallManager) ActiveRuleCount() int {
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
-	return len(fm.activeRules)
+// ActiveRuleCount returns the number of currently active action rules.
+func (am *actionsManager) ActiveRuleCount() int {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	return len(am.activeRules)
 }
 
 // scheduleClose creates a timer that fires CloseRule after the timeout.
-func (fm *firewallManager) scheduleClose(ruleKey string, ctx templateContext) {
+func (am *actionsManager) scheduleClose(ruleKey string, ctx templateContext) {
 	timeout := time.Duration(ctx.Timeout) * time.Second
 
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
+	am.mu.Lock()
+	defer am.mu.Unlock()
 
 	// If a rule with this key already exists, stop the old timer.
-	if existing, ok := fm.activeRules[ruleKey]; ok {
+	if existing, ok := am.activeRules[ruleKey]; ok {
 		existing.timer.Stop()
 	}
 
 	timer := time.AfterFunc(timeout, func() {
-		fm.CloseRule(ctx)
+		am.CloseRule(ctx)
 	})
 
-	fm.activeRules[ruleKey] = &activeRule{ctx: ctx, timer: timer}
+	am.activeRules[ruleKey] = &activeRule{ctx: ctx, timer: timer}
 }
 
 // refreshTimer resets the timer for an existing rule without re-opening it.
-func (fm *firewallManager) refreshTimer(ruleKey string, ctx templateContext) {
-	fm.scheduleClose(ruleKey, ctx)
+func (am *actionsManager) refreshTimer(ruleKey string, ctx templateContext) {
+	am.scheduleClose(ruleKey, ctx)
 }
 
 // allowsPort checks if the requested proto/port is permitted by the stanza's
@@ -289,12 +289,12 @@ func buildTemplateContext(msg *fkospa.Message, srcIP string, stanza *accessStanz
 func effectiveTimeout(msg *fkospa.Message, stanza *accessStanza) int {
 	if msg.ClientTimeout > 0 {
 		ct := int(msg.ClientTimeout)
-		if stanza.MaxFWTimeout > 0 && ct > stanza.MaxFWTimeout {
-			return stanza.MaxFWTimeout
+		if stanza.MaxAccessTimeout > 0 && ct > stanza.MaxAccessTimeout {
+			return stanza.MaxAccessTimeout
 		}
 		return ct
 	}
-	return stanza.FWAccessTimeout
+	return stanza.AccessTimeout
 }
 
 // parseAccessMsg extracts proto and port from an access message like "IP,tcp/22".

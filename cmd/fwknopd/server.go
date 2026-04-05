@@ -11,7 +11,7 @@ import (
 const maxSPAPacketSize = 1500
 
 // udpServer listens for SPA packets on a UDP port and processes them.
-func udpServer(cfg *serverConfig, stanzas []accessStanza, replay *replayCache, logger *spaLogger, fm *firewallManager) error {
+func udpServer(cfg *serverConfig, stanzas []accessStanza, replay *replayCache, logger *spaLogger, am *actionsManager) error {
 	addr := net.JoinHostPort(cfg.BindAddress, fmt.Sprintf("%d", cfg.UDPPort))
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -43,13 +43,13 @@ func udpServer(cfg *serverConfig, stanzas []accessStanza, replay *replayCache, l
 
 		logger.Info("Received UDP datagram (%d bytes) from %s", n, srcIP)
 
-		processSPAPacket(cfg, stanzas, replay, logger, fm, spaData, srcIP)
+		processSPAPacket(cfg, stanzas, replay, logger, am, spaData, srcIP)
 	}
 }
 
 // processSPAPacket attempts to decrypt and validate an SPA packet against
 // all access stanzas.
-func processSPAPacket(cfg *serverConfig, stanzas []accessStanza, replay *replayCache, logger *spaLogger, fm *firewallManager, spaData string, srcIP net.IP) {
+func processSPAPacket(cfg *serverConfig, stanzas []accessStanza, replay *replayCache, logger *spaLogger, am *actionsManager, spaData string, srcIP net.IP) {
 	for i, stanza := range stanzas {
 		if !stanza.matchSource(srcIP) {
 			continue
@@ -122,8 +122,8 @@ func processSPAPacket(cfg *serverConfig, stanzas []accessStanza, replay *replayC
 		}
 
 		// Dispatch action based on message type.
-		if fm != nil {
-			dispatchAction(fm, msg, &stanzas[i], srcIP, i+1, logger)
+		if am != nil {
+			dispatchAction(am, msg, &stanzas[i], srcIP, i+1, logger)
 		}
 
 		return
@@ -168,20 +168,20 @@ func splitFirst(s string, sep string) string {
 }
 
 // dispatchAction executes the appropriate action after successful SPA validation.
-func dispatchAction(fm *firewallManager, msg *fkospa.Message, stanza *accessStanza, srcIP net.IP, stanzaNum int, logger *spaLogger) {
+func dispatchAction(am *actionsManager, msg *fkospa.Message, stanza *accessStanza, srcIP net.IP, stanzaNum int, logger *spaLogger) {
 	if msg.MessageType == fkospa.CommandMsg {
 		if !stanza.EnableCmdExec {
 			logger.Warn("(stanza #%d) CommandMsg from %s but enable_cmd_exec is false", stanzaNum, srcIP)
 			return
 		}
 		logger.Info("(stanza #%d) Executing command from %s", stanzaNum, srcIP)
-		if err := fm.ExecuteCommand(msg.AccessMsg, stanza.CmdExecUser); err != nil {
+		if err := am.ExecuteCommand(msg.AccessMsg, stanza.CmdExecUser); err != nil {
 			logger.Error("(stanza #%d) Command execution failed: %v", stanzaNum, err)
 		}
 		return
 	}
 
-	// Access message: validate port and open firewall rule.
+	// Access message: validate port and open access rule.
 	ctx := buildTemplateContext(msg, srcIP.String(), stanza)
 
 	if !allowsPort(stanza, ctx.Proto, ctx.Port) {
@@ -189,8 +189,8 @@ func dispatchAction(fm *firewallManager, msg *fkospa.Message, stanza *accessStan
 		return
 	}
 
-	if err := fm.OpenRule(ctx); err != nil {
-		logger.Error("(stanza #%d) Failed to open firewall rule: %v", stanzaNum, err)
+	if err := am.OpenRule(ctx); err != nil {
+		logger.Error("(stanza #%d) Failed to open access rule: %v", stanzaNum, err)
 	}
 }
 

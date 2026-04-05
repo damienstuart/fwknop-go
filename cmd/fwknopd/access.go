@@ -21,8 +21,8 @@ type accessStanza struct {
 	HMACKey             string   `yaml:"hmac_key"`
 	HMACDigestType      string   `yaml:"hmac_digest_type"`
 	EncryptionMode      string   `yaml:"encryption_mode"`
-	FWAccessTimeout     int      `yaml:"fw_access_timeout"`
-	MaxFWTimeout        int      `yaml:"max_fw_timeout"`
+	AccessTimeout     int      `yaml:"access_timeout"`
+	MaxAccessTimeout        int      `yaml:"max_access_timeout"`
 	RequireUsername     string   `yaml:"require_username"`
 	RequireSourceAddr   bool     `yaml:"require_source_address"`
 	EnableCmdExec       bool     `yaml:"enable_cmd_exec"`
@@ -130,11 +130,11 @@ func (a *accessStanza) resolve() error {
 		return fmt.Errorf("unknown encryption_mode: %s", encStr)
 	}
 
-	if a.FWAccessTimeout == 0 {
-		a.FWAccessTimeout = 30
+	if a.AccessTimeout == 0 {
+		a.AccessTimeout = 30
 	}
-	if a.MaxFWTimeout == 0 {
-		a.MaxFWTimeout = 300
+	if a.MaxAccessTimeout == 0 {
+		a.MaxAccessTimeout = 300
 	}
 
 	return nil

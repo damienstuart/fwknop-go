@@ -44,8 +44,8 @@ func makeTestStanza(encKey, hmacKey []byte, hmacType fkospa.HMACType, encMode fk
 	stanza.hmacType = hmacType
 	stanza.encMode = encMode
 	stanza.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
-	stanza.FWAccessTimeout = 30
-	stanza.MaxFWTimeout = 300
+	stanza.AccessTimeout = 30
+	stanza.MaxAccessTimeout = 300
 	return stanza
 }
 
@@ -64,7 +64,7 @@ func TestProcessSPAPacketSuccess(t *testing.T) {
 	stanza.encMode = fkospa.EncryptionModeCBC
 	stanza.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
 	stanza.Source = "ANY"
-	stanza.FWAccessTimeout = 30
+	stanza.AccessTimeout = 30
 
 	cfg := &serverConfig{MaxSPAPacketAge: 120, Test: true}
 	replay := newReplayCache(2 * time.Minute)
@@ -89,7 +89,7 @@ func TestProcessSPAPacketNoMatchingStanza(t *testing.T) {
 	stanza.encMode = fkospa.EncryptionModeCBC
 	_, ipNet, _ := net.ParseCIDR("192.168.1.0/24")
 	stanza.sourceNets = []*net.IPNet{ipNet}
-	stanza.FWAccessTimeout = 30
+	stanza.AccessTimeout = 30
 
 	cfg := &serverConfig{MaxSPAPacketAge: 120, Test: true}
 	replay := newReplayCache(2 * time.Minute)
@@ -113,7 +113,7 @@ func TestProcessSPAPacketWrongKey(t *testing.T) {
 	stanza.hmacType = fkospa.HMACSHA256
 	stanza.encMode = fkospa.EncryptionModeCBC
 	stanza.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
-	stanza.FWAccessTimeout = 30
+	stanza.AccessTimeout = 30
 
 	cfg := &serverConfig{MaxSPAPacketAge: 120, Test: true}
 	replay := newReplayCache(2 * time.Minute)
@@ -136,7 +136,7 @@ func TestProcessSPAPacketReplayRejected(t *testing.T) {
 	stanza.hmacType = fkospa.HMACSHA256
 	stanza.encMode = fkospa.EncryptionModeCBC
 	stanza.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
-	stanza.FWAccessTimeout = 30
+	stanza.AccessTimeout = 30
 
 	cfg := &serverConfig{MaxSPAPacketAge: 120, Test: true}
 	replay := newReplayCache(2 * time.Minute)
@@ -170,7 +170,7 @@ func TestProcessSPAPacketTriesMultipleStanzas(t *testing.T) {
 	stanza1.hmacType = fkospa.HMACSHA256
 	stanza1.encMode = fkospa.EncryptionModeCBC
 	stanza1.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
-	stanza1.FWAccessTimeout = 30
+	stanza1.AccessTimeout = 30
 
 	// Second stanza has correct key.
 	stanza2 := accessStanza{Source: "ANY"}
@@ -179,7 +179,7 @@ func TestProcessSPAPacketTriesMultipleStanzas(t *testing.T) {
 	stanza2.hmacType = fkospa.HMACSHA256
 	stanza2.encMode = fkospa.EncryptionModeCBC
 	stanza2.sourceNets = []*net.IPNet{{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(0, 32)}}
-	stanza2.FWAccessTimeout = 30
+	stanza2.AccessTimeout = 30
 
 	cfg := &serverConfig{MaxSPAPacketAge: 120, Test: true}
 	replay := newReplayCache(2 * time.Minute)
@@ -436,17 +436,17 @@ func TestProcessSPAPacketLegacyEncryptionMode(t *testing.T) {
 
 // --- P0: dispatchAction tests ---
 
-func TestDispatchActionOpensFirewallRule(t *testing.T) {
+func TestDispatchActionOpensAccessRule(t *testing.T) {
 	dir := t.TempDir()
 	openLog := filepath.Join(dir, "open.log")
 
-	fwCfg := firewallConfig{
+	actionCfg := actionsConfig{
 		Open:  "echo {{.SourceIP}} {{.Proto}} {{.Port}} >> " + openLog,
 		Close: "true",
 	}
-	fm, err := newFirewallManager(fwCfg, testFWLogger())
+	fm, err := newActionsManager(actionCfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 	defer fm.Shutdown()
 
@@ -474,13 +474,13 @@ func TestDispatchActionPortNotAllowed(t *testing.T) {
 	dir := t.TempDir()
 	openLog := filepath.Join(dir, "open.log")
 
-	fwCfg := firewallConfig{
+	actionCfg := actionsConfig{
 		Open:  "echo opened >> " + openLog,
 		Close: "true",
 	}
-	fm, err := newFirewallManager(fwCfg, testFWLogger())
+	fm, err := newActionsManager(actionCfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 	defer fm.Shutdown()
 
@@ -505,10 +505,10 @@ func TestDispatchActionCommandMsg(t *testing.T) {
 	dir := t.TempDir()
 	cmdLog := filepath.Join(dir, "cmd.log")
 
-	fwCfg := firewallConfig{}
-	fm, err := newFirewallManager(fwCfg, testFWLogger())
+	actionCfg := actionsConfig{}
+	fm, err := newActionsManager(actionCfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	msg := &fkospa.Message{
@@ -535,10 +535,10 @@ func TestDispatchActionCommandMsgDisabled(t *testing.T) {
 	dir := t.TempDir()
 	cmdLog := filepath.Join(dir, "cmd.log")
 
-	fwCfg := firewallConfig{}
-	fm, err := newFirewallManager(fwCfg, testFWLogger())
+	actionCfg := actionsConfig{}
+	fm, err := newActionsManager(actionCfg, testActionLogger())
 	if err != nil {
-		t.Fatalf("newFirewallManager error: %v", err)
+		t.Fatalf("newActionsManager error: %v", err)
 	}
 
 	msg := &fkospa.Message{

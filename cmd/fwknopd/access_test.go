@@ -224,7 +224,7 @@ func TestLoadAccessConfig(t *testing.T) {
   key_base64: "dGVzdGtleQ=="
   hmac_key_base64: "aG1hY2tleQ=="
   hmac_digest_type: sha256
-  fw_access_timeout: 60
+  access_timeout: 60
 
 - source: "ANY"
   open_ports:
@@ -243,8 +243,8 @@ func TestLoadAccessConfig(t *testing.T) {
 		t.Fatalf("expected 2 stanzas, got %d", len(stanzas))
 	}
 
-	if stanzas[0].FWAccessTimeout != 60 {
-		t.Errorf("stanza 0 timeout = %d, want 60", stanzas[0].FWAccessTimeout)
+	if stanzas[0].AccessTimeout != 60 {
+		t.Errorf("stanza 0 timeout = %d, want 60", stanzas[0].AccessTimeout)
 	}
 	if len(stanzas[0].OpenPorts) != 1 || stanzas[0].OpenPorts[0] != "tcp/22" {
 		t.Errorf("stanza 0 open_ports = %v", stanzas[0].OpenPorts)

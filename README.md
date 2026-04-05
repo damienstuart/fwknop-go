@@ -8,7 +8,7 @@ This project provides three components:
 
 - **fkospa** — A Go library implementing the fwknop SPA protocol (encryption, encoding, HMAC, decoding)
 - **fwknop** — A CLI client for sending SPA requests
-- **fwknopd** — A server daemon that receives, processes, and acts on SPA packets (with configurable firewall management)
+- **fwknopd** — A server daemon that receives, processes, and acts on SPA packets (with configurable action management)
 
 ## Installation
 
@@ -53,7 +53,7 @@ fwknop-go/
 │       ├── config.go    #   CLI flags, YAML config loading
 │       ├── access.go    #   Access stanza parsing and matching
 │       ├── server.go    #   UDP listener, SPA processing
-│       ├── firewall.go  #   Template-based firewall rule management
+│       ├── actions.go   #   Template-based action command management
 │       ├── replay.go    #   In-memory replay cache with TTL
 │       └── log.go       #   File + syslog logging
 ├── examples/            # Standalone examples and sample configs
@@ -173,7 +173,7 @@ fwknop --convert-rc ~/.fwknoprc > ~/.fwknoprc.yaml
 
 ## Server (`fwknopd`)
 
-The server listens for SPA packets on a UDP port, decrypts and validates them against access rules, and executes configurable firewall commands to manage access.
+The server listens for SPA packets on a UDP port, decrypts and validates them against access rules, and executes configurable action commands to manage access.
 
 ### Usage
 
@@ -214,12 +214,12 @@ max_spa_packet_age: 120   # seconds
 
 Configuration can also be set via environment variables prefixed with `FWKNOPD_` (e.g. `FWKNOPD_UDP_PORT=62201`).
 
-### Firewall Configuration
+### Action Configuration
 
-The server uses template-based command execution for firewall management. Six lifecycle steps are available, all optional:
+The server uses template-based command execution for managing actions on validated SPA requests. Six lifecycle steps are available, all optional:
 
 ```yaml
-firewall:
+actions:
   validate: "which iptables"
   init: "iptables -N FWKNOP_INPUT 2>/dev/null; iptables -C INPUT -j FWKNOP_INPUT 2>/dev/null || iptables -I INPUT -j FWKNOP_INPUT"
   check: "iptables -C FWKNOP_INPUT -s {{.SourceIP}} -p {{.Proto}} --dport {{.Port}} -j ACCEPT 2>/dev/null"
@@ -250,7 +250,7 @@ firewall:
 | `{{.AccessMsg}}` | Raw access message | `192.168.1.50,tcp/22` |
 | `{{.NATAccess}}` | NAT access string | `10.0.0.100,22` |
 
-Sample configurations for iptables, nftables, firewalld, and PF are provided in `conf_files/server.yaml` and `examples/configs/`.
+Sample action configurations for iptables, nftables, firewalld, and PF are provided in `conf_files/server.yaml` and `examples/configs/`.
 
 ### Access Rules (`access.yaml`)
 
@@ -263,7 +263,7 @@ Each entry defines who can send SPA requests and with what credentials:
   key_base64: "<base64-encryption-key>"
   hmac_key_base64: "<base64-hmac-key>"
   hmac_digest_type: sha256
-  fw_access_timeout: 30
+  access_timeout: 30
   require_source_address: true
 
 - source: "ANY"
@@ -284,7 +284,7 @@ Each entry defines who can send SPA requests and with what credentials:
 | `hmac_key_base64` / `hmac_key` | HMAC key (base64 or plaintext) |
 | `hmac_digest_type` | HMAC algorithm (default: `sha256`) |
 | `encryption_mode` | `cbc` (default) or `legacy` |
-| `fw_access_timeout` | Firewall rule timeout in seconds |
+| `access_timeout` | Access rule timeout in seconds |
 | `require_username` | Require a specific username |
 | `require_source_address` | Source IP in packet must match sender |
 | `enable_cmd_exec` | Allow command execution |

@@ -7,7 +7,7 @@ pid_file: /var/run/fwknop/fwknopd.pid
 run_dir: /var/run/fwknop
 max_spa_packet_age: 120
 
-firewall:
+actions:
   validate: "which nft"
   init: "nft add table inet fwknop; nft add chain inet fwknop input '{ type filter hook input priority -1; policy accept; }'"
   check: "nft list chain inet fwknop input | grep -q '{{.SourceIP}} {{.Proto}} dport {{.Port}} accept'"

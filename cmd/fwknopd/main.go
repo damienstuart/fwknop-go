@@ -71,16 +71,16 @@ func run(args []string) error {
 	replay := newReplayCache(replayTTL)
 	logger.Info("Replay cache initialized (TTL: %s)", replayTTL)
 
-	// Set up firewall manager.
-	fm, err := newFirewallManager(cfg.Firewall, logger)
+	// Set up actions manager.
+	am, err := newActionsManager(cfg.Actions, logger)
 	if err != nil {
-		return fmt.Errorf("firewall config: %w", err)
+		return fmt.Errorf("actions config: %w", err)
 	}
 
-	if err := fm.Validate(); err != nil {
+	if err := am.Validate(); err != nil {
 		return err
 	}
-	if err := fm.Init(); err != nil {
+	if err := am.Init(); err != nil {
 		return err
 	}
 
@@ -101,16 +101,16 @@ func run(args []string) error {
 	go func() {
 		sig := <-sigCh
 		logger.Info("Received signal %v, shutting down...", sig)
-		fm.Shutdown()
+		am.Shutdown()
 		os.Exit(0)
 	}()
 
 	if cfg.Test {
-		logger.Info("Running in test mode — no firewall actions will be taken.")
+		logger.Info("Running in test mode — no actions will be taken.")
 	}
 
 	// Start the UDP server (blocks).
-	return udpServer(cfg, stanzas, replay, logger, fm)
+	return udpServer(cfg, stanzas, replay, logger, am)
 }
 
 // writePIDFile writes the current process PID to the specified file.
@@ -197,7 +197,7 @@ func dumpConfig(cfg *serverConfig, stanzas []accessStanza) {
 		fmt.Printf("    Open ports:       %v\n", s.OpenPorts)
 		fmt.Printf("    HMAC digest:      %s\n", s.HMACDigestType)
 		fmt.Printf("    Encryption mode:  %s\n", s.EncryptionMode)
-		fmt.Printf("    FW timeout:       %ds\n", s.FWAccessTimeout)
+		fmt.Printf("    Access timeout:   %ds\n", s.AccessTimeout)
 		fmt.Printf("    Require username: %s\n", s.RequireUsername)
 		fmt.Printf("    Require src addr: %v\n", s.RequireSourceAddr)
 		fmt.Printf("    Enc key length:   %d bytes\n", len(s.encKey))
