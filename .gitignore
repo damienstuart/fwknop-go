@@ -29,8 +29,6 @@ Thumbs.db
 *~
 *-
 
-### Common omstools project-specific
-
 # Any tmp dir
 tmp/
 temp/
@@ -38,15 +36,16 @@ temp/
 # log files
 *.log
 
-# Config files
+# Env files
 .env
 *.env
-*.conf
-*.yml
-*.yaml
 
 ### Project-specific
 
 # The generated dirs and files
 bin/
 _notes/
+
+# Claude Code
+CLAUDE.md
+.claude/
