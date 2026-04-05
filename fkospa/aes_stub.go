@@ -8,9 +8,9 @@ type aesStub struct {
 }
 
 func (s *aesStub) Encrypt(plaintext []byte, key []byte) ([]byte, error) {
-	return nil, fmt.Errorf("%w: %v", ErrUnsupportedEncryptionMode, s.mode)
+	return nil, fmt.Errorf("%w (mode %v)", ErrUnsupportedEncryptionMode, s.mode)
 }
 
 func (s *aesStub) Decrypt(ciphertext []byte, key []byte) ([]byte, error) {
-	return nil, fmt.Errorf("%w: %v", ErrUnsupportedEncryptionMode, s.mode)
+	return nil, fmt.Errorf("%w (mode %v)", ErrUnsupportedEncryptionMode, s.mode)
 }

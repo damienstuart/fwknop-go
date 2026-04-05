@@ -28,13 +28,13 @@ func (a *aesCBC) Encrypt(plaintext []byte, passphrase []byte) ([]byte, error) {
 
 func (a *aesCBC) encryptWithSalt(plaintext []byte, passphrase []byte, salt []byte) ([]byte, error) {
 	// Derive key and IV.
-	key, iv, err := a.kdf.DeriveKeyAndIV(passphrase, salt, rijndaelKeySize, rijndaelBlockSize)
+	key, iv, err := a.kdf.DeriveKeyAndIV(passphrase, salt, aesKeySize, aesBlockSize)
 	if err != nil {
 		return nil, fmt.Errorf("key derivation: %w", err)
 	}
 
 	// Apply PKCS7 padding.
-	padded := pkcs7Pad(plaintext, rijndaelBlockSize)
+	padded := pkcs7Pad(plaintext, aesBlockSize)
 
 	// Encrypt.
 	block, err := aes.NewCipher(key)
@@ -59,7 +59,7 @@ func (a *aesCBC) encryptWithSalt(plaintext []byte, passphrase []byte, salt []byt
 // Expects input format: "Salted__" (8 bytes) + salt (8 bytes) + ciphertext.
 func (a *aesCBC) Decrypt(data []byte, passphrase []byte) ([]byte, error) {
 	// Minimum size: 16 (salt header) + 16 (at least one block).
-	if len(data) < saltLen+saltLen+rijndaelBlockSize {
+	if len(data) < saltLen+saltLen+aesBlockSize {
 		return nil, fmt.Errorf("%w: ciphertext too short", ErrDecryptionFailed)
 	}
 
@@ -70,12 +70,12 @@ func (a *aesCBC) Decrypt(data []byte, passphrase []byte) ([]byte, error) {
 	salt := data[saltLen : saltLen+saltLen]
 	ciphertext := data[saltLen+saltLen:]
 
-	if len(ciphertext)%rijndaelBlockSize != 0 {
+	if len(ciphertext)%aesBlockSize != 0 {
 		return nil, fmt.Errorf("%w: ciphertext not block-aligned", ErrDecryptionFailed)
 	}
 
 	// Derive key and IV.
-	key, iv, err := a.kdf.DeriveKeyAndIV(passphrase, salt, rijndaelKeySize, rijndaelBlockSize)
+	key, iv, err := a.kdf.DeriveKeyAndIV(passphrase, salt, aesKeySize, aesBlockSize)
 	if err != nil {
 		return nil, fmt.Errorf("key derivation: %w", err)
 	}
@@ -91,7 +91,7 @@ func (a *aesCBC) Decrypt(data []byte, passphrase []byte) ([]byte, error) {
 	cbc.CryptBlocks(plaintext, ciphertext)
 
 	// Remove PKCS7 padding.
-	plaintext, err = pkcs7Unpad(plaintext, rijndaelBlockSize)
+	plaintext, err = pkcs7Unpad(plaintext, aesBlockSize)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDecryptionFailed, err)
 	}
@@ -120,12 +120,12 @@ func (a *aesCBCLegacyIV) Decrypt(data []byte, passphrase []byte) ([]byte, error)
 // legacyPadPassphrase pads a passphrase shorter than 16 bytes with '0'
 // characters, matching the legacy C behavior.
 func legacyPadPassphrase(passphrase []byte) []byte {
-	if len(passphrase) >= rijndaelMinKey {
+	if len(passphrase) >= aesMinKeySize {
 		return passphrase
 	}
-	padded := make([]byte, rijndaelMinKey)
+	padded := make([]byte, aesMinKeySize)
 	copy(padded, passphrase)
-	for i := len(passphrase); i < rijndaelMinKey; i++ {
+	for i := len(passphrase); i < aesMinKeySize; i++ {
 		padded[i] = '0'
 	}
 	return padded

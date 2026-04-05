@@ -1,0 +1,16 @@
+# Server configuration using nftables for firewall management.
+udp_port: 62201
+bind_address: "0.0.0.0"
+log_file: /var/log/fwknop/fwknopd.log
+syslog_identity: "fwknopd"
+pid_file: /var/run/fwknop/fwknopd.pid
+run_dir: /var/run/fwknop
+max_spa_packet_age: 120
+
+firewall:
+  validate: "which nft"
+  init: "nft add table inet fwknop; nft add chain inet fwknop input '{ type filter hook input priority -1; policy accept; }'"
+  check: "nft list chain inet fwknop input | grep -q '{{.SourceIP}} {{.Proto}} dport {{.Port}} accept'"
+  open: "nft add rule inet fwknop input ip saddr {{.SourceIP}} {{.Proto}} dport {{.Port}} accept comment \\\"fwknop-{{.SourceIP}}-{{.Proto}}-{{.Port}}\\\""
+  close: "nft -a list chain inet fwknop input | grep 'fwknop-{{.SourceIP}}-{{.Proto}}-{{.Port}}' | awk '{print $NF}' | xargs -I{} nft delete rule inet fwknop input handle {}"
+  shutdown: "nft delete table inet fwknop 2>/dev/null"

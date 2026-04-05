@@ -31,7 +31,7 @@ go run ./cmd/fwknop \
     -D 127.0.0.1 \
     -A tcp/22 \
     -a 127.0.0.1 \
-    --key-base64-rijndael 'bcPRKXdUB6gQblanFrvjggk6YlcTzgBe3peIInFai/c=' \
+    --key-base64 'bcPRKXdUB6gQblanFrvjggk6YlcTzgBe3peIInFai/c=' \
     --key-base64-hmac 'ii0oj8m74w0d9+JJrqv5I0z7lxDPb5ECLfQjvJPgGEc=' \
     -v
 ```

@@ -18,10 +18,10 @@ func TestResolveDigestType(t *testing.T) {
 		{"sha256", fkospa.DigestSHA256, false},
 		{"sha384", fkospa.DigestSHA384, false},
 		{"sha512", fkospa.DigestSHA512, false},
-		{"sha3_256", fkospa.DigestSHA3256, false},
-		{"sha3-256", fkospa.DigestSHA3256, false},
-		{"sha3_512", fkospa.DigestSHA3512, false},
-		{"sha3-512", fkospa.DigestSHA3512, false},
+		{"sha3_256", fkospa.DigestSHA3_256, false},
+		{"sha3-256", fkospa.DigestSHA3_256, false},
+		{"sha3_512", fkospa.DigestSHA3_512, false},
+		{"sha3-512", fkospa.DigestSHA3_512, false},
 		{"SHA256", fkospa.DigestSHA256, false},  // case insensitive
 		{"Sha512", fkospa.DigestSHA512, false},  // case insensitive
 		{"bogus", 0, true},
@@ -58,8 +58,8 @@ func TestResolveHMACType(t *testing.T) {
 		{"sha256", fkospa.HMACSHA256, false},
 		{"sha384", fkospa.HMACSHA384, false},
 		{"sha512", fkospa.HMACSHA512, false},
-		{"sha3_256", fkospa.HMACSHA3256, false},
-		{"sha3_512", fkospa.HMACSHA3512, false},
+		{"sha3_256", fkospa.HMACSHA3_256, false},
+		{"sha3_512", fkospa.HMACSHA3_512, false},
 		{"SHA256", fkospa.HMACSHA256, false},
 		{"invalid", 0, true},
 	}
@@ -89,10 +89,10 @@ func TestResolveEncMode(t *testing.T) {
 		expected fkospa.EncryptionMode
 		wantErr  bool
 	}{
-		{"cbc", fkospa.EncModeCBC, false},
-		{"CBC", fkospa.EncModeCBC, false},
-		{"legacy", fkospa.EncModeCBCLegacyIV, false},
-		{"LEGACY", fkospa.EncModeCBCLegacyIV, false},
+		{"cbc", fkospa.EncryptionModeCBC, false},
+		{"CBC", fkospa.EncryptionModeCBC, false},
+		{"legacy", fkospa.EncryptionModeCBCLegacy, false},
+		{"LEGACY", fkospa.EncryptionModeCBCLegacy, false},
 		{"ecb", 0, true},
 		{"", 0, true},
 	}
@@ -125,17 +125,17 @@ func TestResolveEncKey(t *testing.T) {
 	}{
 		{
 			name:    "base64 key",
-			cfg:     clientConfig{KeyBase64Rijn: "dGVzdGtleQ=="},
+			cfg:     clientConfig{KeyBase64: "dGVzdGtleQ=="},
 			wantLen: 7, // "testkey"
 		},
 		{
 			name:    "plaintext key",
-			cfg:     clientConfig{KeyRijndael: "mypassword"},
+			cfg:     clientConfig{Key: "mypassword"},
 			wantLen: 10,
 		},
 		{
 			name:    "base64 takes precedence",
-			cfg:     clientConfig{KeyBase64Rijn: "dGVzdGtleQ==", KeyRijndael: "other"},
+			cfg:     clientConfig{KeyBase64: "dGVzdGtleQ==", Key: "other"},
 			wantLen: 7,
 		},
 		{

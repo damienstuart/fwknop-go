@@ -6,31 +6,32 @@ import "fmt"
 type EncryptionMode int
 
 const (
-	EncModeECB         EncryptionMode = 1 // stubbed
-	EncModeCBC         EncryptionMode = 2 // default, fully implemented
-	EncModeCFB         EncryptionMode = 3 // stubbed
-	EncModePCBC        EncryptionMode = 4 // stubbed
-	EncModeOFB         EncryptionMode = 5 // stubbed
-	EncModeCTR         EncryptionMode = 6 // stubbed
-	EncModeCBCLegacyIV EncryptionMode = 8 // fully implemented
+	EncryptionModeECB         EncryptionMode = 1 // stubbed
+	EncryptionModeCBC         EncryptionMode = 2 // default, fully implemented
+	EncryptionModeCFB         EncryptionMode = 3 // stubbed
+	EncryptionModePCBC        EncryptionMode = 4 // stubbed
+	EncryptionModeOFB         EncryptionMode = 5 // stubbed
+	EncryptionModeCTR         EncryptionMode = 6 // stubbed
+	// Mode 7 is intentionally skipped to match the C fwknop enum values.
+	EncryptionModeCBCLegacy   EncryptionMode = 8 // fully implemented
 )
 
 // String returns a human-readable name for the encryption mode.
 func (em EncryptionMode) String() string {
 	switch em {
-	case EncModeECB:
+	case EncryptionModeECB:
 		return "ECB"
-	case EncModeCBC:
+	case EncryptionModeCBC:
 		return "CBC"
-	case EncModeCFB:
+	case EncryptionModeCFB:
 		return "CFB"
-	case EncModePCBC:
+	case EncryptionModePCBC:
 		return "PCBC"
-	case EncModeOFB:
+	case EncryptionModeOFB:
 		return "OFB"
-	case EncModeCTR:
+	case EncryptionModeCTR:
 		return "CTR"
-	case EncModeCBCLegacyIV:
+	case EncryptionModeCBCLegacy:
 		return "CBC-LegacyIV"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(em))
@@ -39,8 +40,8 @@ func (em EncryptionMode) String() string {
 
 func (em EncryptionMode) isValid() bool {
 	switch em {
-	case EncModeECB, EncModeCBC, EncModeCFB, EncModePCBC,
-		EncModeOFB, EncModeCTR, EncModeCBCLegacyIV:
+	case EncryptionModeECB, EncryptionModeCBC, EncryptionModeCFB, EncryptionModePCBC,
+		EncryptionModeOFB, EncryptionModeCTR, EncryptionModeCBCLegacy:
 		return true
 	default:
 		return false
@@ -66,11 +67,11 @@ type EncryptDecrypter interface {
 // encrypterFor returns the EncryptDecrypter for the given mode.
 func encrypterFor(mode EncryptionMode) (EncryptDecrypter, error) {
 	switch mode {
-	case EncModeCBC:
+	case EncryptionModeCBC:
 		return &aesCBC{kdf: EVPBytesToKey{}}, nil
-	case EncModeCBCLegacyIV:
+	case EncryptionModeCBCLegacy:
 		return &aesCBCLegacyIV{kdf: EVPBytesToKey{}}, nil
-	case EncModeECB, EncModeCFB, EncModePCBC, EncModeOFB, EncModeCTR:
+	case EncryptionModeECB, EncryptionModeCFB, EncryptionModePCBC, EncryptionModeOFB, EncryptionModeCTR:
 		return &aesStub{mode: mode}, nil
 	default:
 		return nil, fmt.Errorf("%w: %d", ErrUnsupportedEncryptionMode, mode)

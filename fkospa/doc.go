@@ -49,8 +49,8 @@
 //
 // # Encryption
 //
-// The default and recommended encryption is AES-256-CBC ([EncModeCBC]). A
-// legacy CBC IV mode ([EncModeCBCLegacyIV]) is also supported for backward
+// The default and recommended encryption is AES-256-CBC ([EncryptionModeCBC]). A
+// legacy CBC IV mode ([EncryptionModeCBCLegacy]) is also supported for backward
 // compatibility. Other AES modes are defined as constants but not yet
 // implemented — they return [ErrUnsupportedEncryptionMode].
 //

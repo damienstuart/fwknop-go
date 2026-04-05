@@ -32,7 +32,7 @@ type Option func(*Message) error
 //   - Username from OS
 //   - MessageType = AccessMsg
 //   - DigestType = DigestSHA256
-//   - EncryptionMode = EncModeCBC
+//   - EncryptionMode = EncryptionModeCBC
 //   - HMACType = HMACSHA256
 func New() (*Message, error) {
 	return NewWithOptions()
@@ -56,7 +56,7 @@ func NewWithOptions(opts ...Option) (*Message, error) {
 		Timestamp:      time.Now(),
 		MessageType:    AccessMsg,
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 

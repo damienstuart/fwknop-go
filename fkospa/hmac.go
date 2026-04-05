@@ -15,8 +15,8 @@ const (
 	HMACSHA256  HMACType = 3 // default
 	HMACSHA384  HMACType = 4
 	HMACSHA512  HMACType = 5
-	HMACSHA3256 HMACType = 6
-	HMACSHA3512 HMACType = 7
+	HMACSHA3_256 HMACType = 6
+	HMACSHA3_512 HMACType = 7
 )
 
 // String returns a human-readable name for the HMAC type.
@@ -32,9 +32,9 @@ func (ht HMACType) String() string {
 		return "HMAC-SHA384"
 	case HMACSHA512:
 		return "HMAC-SHA512"
-	case HMACSHA3256:
+	case HMACSHA3_256:
 		return "HMAC-SHA3-256"
-	case HMACSHA3512:
+	case HMACSHA3_512:
 		return "HMAC-SHA3-512"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(ht))
@@ -42,7 +42,7 @@ func (ht HMACType) String() string {
 }
 
 func (ht HMACType) isValid() bool {
-	return ht >= HMACMD5 && ht <= HMACSHA3512
+	return ht >= HMACMD5 && ht <= HMACSHA3_512
 }
 
 // digestType returns the corresponding DigestType for this HMAC type.

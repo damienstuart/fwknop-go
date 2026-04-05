@@ -173,9 +173,9 @@ func TestAccessStanzaResolveEncMode(t *testing.T) {
 		input    string
 		expected fkospa.EncryptionMode
 	}{
-		{"", fkospa.EncModeCBC},             // default
-		{"cbc", fkospa.EncModeCBC},
-		{"legacy", fkospa.EncModeCBCLegacyIV},
+		{"", fkospa.EncryptionModeCBC},             // default
+		{"cbc", fkospa.EncryptionModeCBC},
+		{"legacy", fkospa.EncryptionModeCBCLegacy},
 	}
 
 	for _, tc := range tests {

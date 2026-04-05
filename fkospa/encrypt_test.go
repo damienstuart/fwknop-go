@@ -134,7 +134,7 @@ func TestPKCS7Padding(t *testing.T) {
 }
 
 func TestAESStubReturnsError(t *testing.T) {
-	stub := &aesStub{mode: EncModeECB}
+	stub := &aesStub{mode: EncryptionModeECB}
 
 	_, err := stub.Encrypt([]byte("test"), []byte("key"))
 	if err == nil {
@@ -149,7 +149,7 @@ func TestAESStubReturnsError(t *testing.T) {
 
 func TestEncrypterForModes(t *testing.T) {
 	// CBC and Legacy IV should return working encrypters.
-	for _, mode := range []EncryptionMode{EncModeCBC, EncModeCBCLegacyIV} {
+	for _, mode := range []EncryptionMode{EncryptionModeCBC, EncryptionModeCBCLegacy} {
 		enc, err := encrypterFor(mode)
 		if err != nil {
 			t.Errorf("encrypterFor(%v) error: %v", mode, err)
@@ -171,7 +171,7 @@ func TestEncrypterForModes(t *testing.T) {
 	}
 
 	// Stubbed modes should return stubs.
-	for _, mode := range []EncryptionMode{EncModeECB, EncModeCFB, EncModePCBC, EncModeOFB, EncModeCTR} {
+	for _, mode := range []EncryptionMode{EncryptionModeECB, EncryptionModeCFB, EncryptionModePCBC, EncryptionModeOFB, EncryptionModeCTR} {
 		enc, err := encrypterFor(mode)
 		if err != nil {
 			t.Errorf("encrypterFor(%v) error: %v", mode, err)

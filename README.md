@@ -8,7 +8,7 @@ This project provides three components:
 
 - **fkospa** — A Go library implementing the fwknop SPA protocol (encryption, encoding, HMAC, decoding)
 - **fwknop** — A CLI client for sending SPA requests
-- **fwknopd** — A server daemon that receives and processes SPA packets
+- **fwknopd** — A server daemon that receives, processes, and acts on SPA packets (with configurable firewall management)
 
 ## Installation
 
@@ -44,7 +44,8 @@ fwknop-go/
 │   ├── fwknop/          # SPA client
 │   │   ├── main.go      #   Entry point, SPA message assembly
 │   │   ├── config.go    #   CLI flags, env vars, config loading
-│   │   ├── rcfile.go    #   .fwknoprc parsing (legacy + YAML)
+│   │   ├── rcfile.go    #   .fwknoprc YAML parsing
+│   │   ├── convert.go   #   Legacy .fwknoprc to YAML converter
 │   │   ├── resolve.go   #   External IP resolution via HTTPS
 │   │   └── send.go      #   UDP packet sending
 │   └── fwknopd/         # SPA server daemon
@@ -52,10 +53,12 @@ fwknop-go/
 │       ├── config.go    #   CLI flags, YAML config loading
 │       ├── access.go    #   Access stanza parsing and matching
 │       ├── server.go    #   UDP listener, SPA processing
+│       ├── firewall.go  #   Template-based firewall rule management
 │       ├── replay.go    #   In-memory replay cache with TTL
 │       └── log.go       #   File + syslog logging
+├── examples/            # Standalone examples and sample configs
+├── conf_files/          # Reference server and access configs
 ├── test/interop/        # Cross-validation configs for C server
-├── docs/
 ├── go.mod
 └── README.md
 ```
@@ -68,7 +71,7 @@ fwknop-go/
 fwknop --key-gen
 ```
 ```
-KEY_BASE64: <base64-rijndael-key>
+KEY_BASE64: <base64-encryption-key>
 HMAC_KEY_BASE64: <base64-hmac-key>
 ```
 
@@ -76,7 +79,7 @@ HMAC_KEY_BASE64: <base64-hmac-key>
 
 ```bash
 fwknop -D server.example.com -A tcp/22 -R \
-    --key-base64-rijndael '<key>' \
+    --key-base64 '<key>' \
     --key-base64-hmac '<hmac-key>'
 ```
 
@@ -113,7 +116,8 @@ fwknop [options]
 | `-a, --allow-ip` | Source IP to allow in the SPA packet |
 | `-R, --resolve-ip` | Auto-resolve external IP via HTTPS |
 | `-s, --source-ip` | Use `0.0.0.0` (allow any source) |
-| `--key-base64-rijndael` | Base64-encoded encryption key |
+| `--key-base64` | Base64-encoded encryption key |
+| `--key` | Encryption key (passphrase) |
 | `--key-base64-hmac` | Base64-encoded HMAC key |
 | `-n, --named-config` | Use a named stanza from `.fwknoprc` |
 | `-N, --nat-access` | NAT access specification (IP,port) |
@@ -121,6 +125,7 @@ fwknop [options]
 | `-f, --fw-timeout` | Firewall rule timeout in seconds |
 | `-T, --test` | Build the packet but don't send it |
 | `-k, --key-gen` | Generate random encryption + HMAC keys |
+| `--convert-rc` | Convert a legacy `.fwknoprc` to YAML |
 | `-v, --verbose` | Verbose output (repeatable) |
 
 Run `fwknop --help` for the full list.
@@ -133,31 +138,15 @@ The client loads configuration from three sources (highest priority wins):
 2. **Environment variables** — prefixed with `FWKNOP_` (e.g. `FWKNOP_DESTINATION`)
 3. **RC file** — `~/.fwknoprc` (lowest priority)
 
-#### RC file formats
+#### RC file format (YAML)
 
-The client supports two `.fwknoprc` formats, auto-detected on load:
-
-**Legacy format** (compatible with the C client):
-
-```ini
-[default]
-SPA_SERVER          192.168.1.100
-ACCESS              tcp/22
-KEY_BASE64          <base64-key>
-HMAC_KEY_BASE64     <base64-hmac-key>
-
-[production]
-SPA_SERVER          prod.example.com
-ACCESS              tcp/22,tcp/443
-```
-
-**YAML format:**
+The client uses YAML `.fwknoprc` files with stanza-based configuration:
 
 ```yaml
 default:
   destination: 192.168.1.100
   access: tcp/22
-  key_base64_rijndael: <base64-key>
+  key_base64: <base64-key>
   key_base64_hmac: <base64-hmac-key>
 
 production:
@@ -171,11 +160,20 @@ Select a named stanza with `-n`:
 fwknop -n production -R
 ```
 
+#### Migrating from legacy `.fwknoprc`
+
+If you have an existing C fwknop `.fwknoprc` file (INI-style `[stanza]` format),
+convert it to YAML:
+
+```bash
+fwknop --convert-rc ~/.fwknoprc > ~/.fwknoprc.yaml
+```
+
 ---
 
 ## Server (`fwknopd`)
 
-The server listens for SPA packets on a UDP port, decrypts and validates them against access rules, and logs the results. Firewall integration is planned for a future release.
+The server listens for SPA packets on a UDP port, decrypts and validates them against access rules, and executes configurable firewall commands to manage access.
 
 ### Usage
 
@@ -216,6 +214,44 @@ max_spa_packet_age: 120   # seconds
 
 Configuration can also be set via environment variables prefixed with `FWKNOPD_` (e.g. `FWKNOPD_UDP_PORT=62201`).
 
+### Firewall Configuration
+
+The server uses template-based command execution for firewall management. Six lifecycle steps are available, all optional:
+
+```yaml
+firewall:
+  validate: "which iptables"
+  init: "iptables -N FWKNOP_INPUT 2>/dev/null; iptables -C INPUT -j FWKNOP_INPUT 2>/dev/null || iptables -I INPUT -j FWKNOP_INPUT"
+  check: "iptables -C FWKNOP_INPUT -s {{.SourceIP}} -p {{.Proto}} --dport {{.Port}} -j ACCEPT 2>/dev/null"
+  open: "iptables -A FWKNOP_INPUT -s {{.SourceIP}} -p {{.Proto}} --dport {{.Port}} -j ACCEPT"
+  close: "iptables -D FWKNOP_INPUT -s {{.SourceIP}} -p {{.Proto}} --dport {{.Port}} -j ACCEPT"
+  shutdown: "iptables -F FWKNOP_INPUT; iptables -D INPUT -j FWKNOP_INPUT; iptables -X FWKNOP_INPUT"
+```
+
+| Step | When | On failure |
+|------|------|------------|
+| `validate` | Server startup | Fatal — server refuses to start |
+| `init` | Server startup (after validate) | Fatal |
+| `check` | Before open (per SPA) | Exit 0 = rule exists (skip open), non-zero = proceed |
+| `open` | On valid SPA request | Log error, don't schedule close |
+| `close` | Timer expiry | Log error, remove from tracking |
+| `shutdown` | Server exit (signal) | Best-effort, log errors |
+
+#### Template variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{.SourceIP}}` | UDP packet source IP | `192.168.1.50` |
+| `{{.Proto}}` | Protocol from access message | `tcp` |
+| `{{.Port}}` | Port from access message | `22` |
+| `{{.Username}}` | Username from SPA message | `alice` |
+| `{{.Timestamp}}` | Unix timestamp | `1775331907` |
+| `{{.Timeout}}` | Rule timeout in seconds | `30` |
+| `{{.AccessMsg}}` | Raw access message | `192.168.1.50,tcp/22` |
+| `{{.NATAccess}}` | NAT access string | `10.0.0.100,22` |
+
+Sample configurations for iptables, nftables, firewalld, and PF are provided in `conf_files/server.yaml` and `examples/configs/`.
+
 ### Access Rules (`access.yaml`)
 
 Each entry defines who can send SPA requests and with what credentials:
@@ -224,7 +260,7 @@ Each entry defines who can send SPA requests and with what credentials:
 - source: "192.168.1.0/24"
   open_ports:
     - tcp/22
-  key_base64: "<base64-rijndael-key>"
+  key_base64: "<base64-encryption-key>"
   hmac_key_base64: "<base64-hmac-key>"
   hmac_digest_type: sha256
   fw_access_timeout: 30
@@ -234,7 +270,7 @@ Each entry defines who can send SPA requests and with what credentials:
   open_ports:
     - tcp/22
     - tcp/443
-  key_base64: "<base64-rijndael-key>"
+  key_base64: "<base64-encryption-key>"
   hmac_key_base64: "<base64-hmac-key>"
 ```
 

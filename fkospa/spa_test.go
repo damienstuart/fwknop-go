@@ -24,8 +24,8 @@ func TestNewDefaults(t *testing.T) {
 	if m.DigestType != DigestSHA256 {
 		t.Errorf("DigestType = %v, want DigestSHA256", m.DigestType)
 	}
-	if m.EncryptionMode != EncModeCBC {
-		t.Errorf("EncryptionMode = %v, want EncModeCBC", m.EncryptionMode)
+	if m.EncryptionMode != EncryptionModeCBC {
+		t.Errorf("EncryptionMode = %v, want EncryptionModeCBC", m.EncryptionMode)
 	}
 	if m.HMACType != HMACSHA256 {
 		t.Errorf("HMACType = %v, want HMACSHA256", m.HMACType)
@@ -64,7 +64,7 @@ func TestEncodeWireFormat(t *testing.T) {
 		MessageType:    AccessMsg,
 		AccessMsg:      "192.168.1.1,tcp/22",
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 
@@ -134,7 +134,7 @@ func TestEncodeWithNATAccess(t *testing.T) {
 		AccessMsg:      "192.168.1.1,tcp/22",
 		NATAccess:      "10.0.0.1,22",
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 
@@ -159,7 +159,7 @@ func TestEncodeWithClientTimeout(t *testing.T) {
 		AccessMsg:      "192.168.1.1,tcp/22",
 		ClientTimeout:  30,
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 
@@ -183,7 +183,7 @@ func TestEncryptRoundTrip(t *testing.T) {
 		MessageType:    AccessMsg,
 		AccessMsg:      "192.168.1.1,tcp/22",
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 
@@ -199,10 +199,10 @@ func TestEncryptRoundTrip(t *testing.T) {
 		t.Fatal("Encrypt returned empty string")
 	}
 
-	// The SPA data should NOT start with the Rijndael salt prefix
+	// The SPA data should NOT start with the salt prefix
 	// (it's stripped from the wire format per the C protocol).
-	if strings.HasPrefix(spaData, B64RijndaelSalt) {
-		t.Errorf("SPA data should not start with %q (should be stripped)", B64RijndaelSalt)
+	if strings.HasPrefix(spaData, B64SaltPrefix) {
+		t.Errorf("SPA data should not start with %q (should be stripped)", B64SaltPrefix)
 	}
 
 	t.Logf("SPA data length: %d", len(spaData))
@@ -217,7 +217,7 @@ func TestEncryptWithoutHMAC(t *testing.T) {
 		MessageType:    AccessMsg,
 		AccessMsg:      "192.168.1.1,tcp/22",
 		DigestType:     DigestSHA256,
-		EncryptionMode: EncModeCBC,
+		EncryptionMode: EncryptionModeCBC,
 		HMACType:       HMACSHA256,
 	}
 

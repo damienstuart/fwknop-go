@@ -42,7 +42,7 @@ func WithDecryptHMACType(ht HMACType) DecryptOption {
 //   - opts: optional configuration (encryption mode, HMAC type)
 func Decrypt(spaData string, encKey []byte, hmacKey []byte, opts ...DecryptOption) (*Message, error) {
 	cfg := &decryptConfig{
-		encMode:  EncModeCBC,
+		encMode:  EncryptionModeCBC,
 		hmacType: HMACSHA256,
 	}
 	for _, o := range opts {
@@ -51,7 +51,7 @@ func Decrypt(spaData string, encKey []byte, hmacKey []byte, opts ...DecryptOptio
 
 	// The wire format has the "U2FsdGVkX1" prefix stripped. Re-add it for
 	// HMAC verification and decryption. See fko_get_spa_data() in C code.
-	b64WithPrefix := B64RijndaelSalt + spaData
+	b64WithPrefix := B64SaltPrefix + spaData
 
 	// If HMAC key is provided, the HMAC was computed on the full b64
 	// ciphertext (with prefix), and is appended after the stripped ciphertext.
@@ -72,7 +72,7 @@ func Decrypt(spaData string, encKey []byte, hmacKey []byte, opts ...DecryptOptio
 		hmacFromData := spaData[len(spaData)-hmacLen:]
 
 		// HMAC was computed on full b64 (with prefix).
-		fullB64 := B64RijndaelSalt + strippedCiphertext
+		fullB64 := B64SaltPrefix + strippedCiphertext
 		computedHMAC, err := ComputeHMACBase64(cfg.hmacType, []byte(fullB64), hmacKey)
 		if err != nil {
 			return nil, err
@@ -118,9 +118,9 @@ func hmacB64Len(ht HMACType) int {
 		return sha384B64Len
 	case HMACSHA512:
 		return sha512B64Len
-	case HMACSHA3256:
+	case HMACSHA3_256:
 		return sha256B64Len // same length as SHA256
-	case HMACSHA3512:
+	case HMACSHA3_512:
 		return sha512B64Len // same length as SHA512
 	default:
 		return 0
@@ -272,7 +272,7 @@ func verifyDigest(encodedMsg string, expectedDigest string, digestType DigestTyp
 	// Try SHA3 fallback for ambiguous lengths.
 	switch digestType {
 	case DigestSHA256:
-		computed, err = DigestBase64(DigestSHA3256, []byte(encodedMsg))
+		computed, err = DigestBase64(DigestSHA3_256, []byte(encodedMsg))
 		if err != nil {
 			return err
 		}
@@ -280,7 +280,7 @@ func verifyDigest(encodedMsg string, expectedDigest string, digestType DigestTyp
 			return nil
 		}
 	case DigestSHA512:
-		computed, err = DigestBase64(DigestSHA3512, []byte(encodedMsg))
+		computed, err = DigestBase64(DigestSHA3_512, []byte(encodedMsg))
 		if err != nil {
 			return err
 		}

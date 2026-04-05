@@ -109,9 +109,9 @@ func (a *accessStanza) resolve() error {
 	case "sha512":
 		a.hmacType = fkospa.HMACSHA512
 	case "sha3_256", "sha3-256":
-		a.hmacType = fkospa.HMACSHA3256
+		a.hmacType = fkospa.HMACSHA3_256
 	case "sha3_512", "sha3-512":
-		a.hmacType = fkospa.HMACSHA3512
+		a.hmacType = fkospa.HMACSHA3_512
 	default:
 		return fmt.Errorf("unknown hmac_digest_type: %s", hmacStr)
 	}
@@ -123,9 +123,9 @@ func (a *accessStanza) resolve() error {
 	}
 	switch strings.ToLower(encStr) {
 	case "cbc":
-		a.encMode = fkospa.EncModeCBC
+		a.encMode = fkospa.EncryptionModeCBC
 	case "legacy":
-		a.encMode = fkospa.EncModeCBCLegacyIV
+		a.encMode = fkospa.EncryptionModeCBCLegacy
 	default:
 		return fmt.Errorf("unknown encryption_mode: %s", encStr)
 	}

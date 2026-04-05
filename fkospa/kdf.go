@@ -3,9 +3,9 @@ package fkospa
 import "crypto/md5"
 
 const (
-	rijndaelKeySize   = 32 // AES-256
-	rijndaelBlockSize = 16
-	rijndaelMinKey    = 16 // AES-128 minimum for legacy padding
+	aesKeySize    = 32 // AES-256
+	aesBlockSize  = 16
+	aesMinKeySize = 16 // AES-128 minimum for legacy padding
 	saltLen           = 8
 )
 

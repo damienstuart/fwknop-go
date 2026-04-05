@@ -114,7 +114,7 @@ func ExampleMessage_Encode() {
 		MessageType:    fkospa.AccessMsg,
 		AccessMsg:      "192.168.1.1,tcp/22",
 		DigestType:     fkospa.DigestSHA256,
-		EncryptionMode: fkospa.EncModeCBC,
+		EncryptionMode: fkospa.EncryptionModeCBC,
 		HMACType:       fkospa.HMACSHA256,
 	}
 

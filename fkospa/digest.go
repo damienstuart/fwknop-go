@@ -20,8 +20,8 @@ const (
 	DigestSHA256  DigestType = 3 // default
 	DigestSHA384  DigestType = 4
 	DigestSHA512  DigestType = 5
-	DigestSHA3256 DigestType = 6
-	DigestSHA3512 DigestType = 7
+	DigestSHA3_256 DigestType = 6
+	DigestSHA3_512 DigestType = 7
 )
 
 // String returns a human-readable name for the digest type.
@@ -37,9 +37,9 @@ func (dt DigestType) String() string {
 		return "SHA384"
 	case DigestSHA512:
 		return "SHA512"
-	case DigestSHA3256:
+	case DigestSHA3_256:
 		return "SHA3-256"
-	case DigestSHA3512:
+	case DigestSHA3_512:
 		return "SHA3-512"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(dt))
@@ -47,7 +47,7 @@ func (dt DigestType) String() string {
 }
 
 func (dt DigestType) isValid() bool {
-	return dt >= DigestMD5 && dt <= DigestSHA3512
+	return dt >= DigestMD5 && dt <= DigestSHA3_512
 }
 
 // newHash returns a new hash.Hash for the given digest type.
@@ -73,9 +73,9 @@ func (dt DigestType) newHashFunc() func() hash.Hash {
 		return sha512.New384
 	case DigestSHA512:
 		return sha512.New
-	case DigestSHA3256:
+	case DigestSHA3_256:
 		return sha3.New256
-	case DigestSHA3512:
+	case DigestSHA3_512:
 		return sha3.New512
 	default:
 		return nil

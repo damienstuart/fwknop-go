@@ -44,6 +44,9 @@ type serverConfig struct {
 	// SPA Processing
 	MaxSPAPacketAge int `koanf:"max_spa_packet_age"`
 
+	// Firewall
+	Firewall firewallConfig `koanf:"firewall"`
+
 	// Files (from CLI)
 	ConfigFile string `koanf:"config_file"`
 	AccessFile string `koanf:"access_file"`

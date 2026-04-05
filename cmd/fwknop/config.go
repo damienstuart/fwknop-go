@@ -42,8 +42,8 @@ type clientConfig struct {
 	DigestType       string `koanf:"digest_type"`
 	HMACDigestType   string `koanf:"hmac_digest_type"`
 	EncryptionMode   string `koanf:"encryption_mode"`
-	KeyRijndael      string `koanf:"key_rijndael"`
-	KeyBase64Rijn    string `koanf:"key_base64_rijndael"`
+	Key       string `koanf:"key"`
+	KeyBase64 string `koanf:"key_base64"`
 	KeyHMAC          string `koanf:"key_hmac"`
 	KeyBase64HMAC    string `koanf:"key_base64_hmac"`
 	UseHMAC          bool   `koanf:"use_hmac"`
@@ -60,6 +60,7 @@ type clientConfig struct {
 	NamedConfig  string `koanf:"named_config"`
 	RCFile       string `koanf:"rc_file"`
 	NoRCFile     bool   `koanf:"no_rc_file"`
+	ConvertRC    string `koanf:"convert_rc"`
 
 	// Modes
 	Test      bool `koanf:"test"`
@@ -97,8 +98,8 @@ func setupFlags() *pflag.FlagSet {
 	f.StringP("digest-type", "m", "sha256", "Digest algorithm")
 	f.String("hmac-digest-type", "sha256", "HMAC digest algorithm")
 	f.String("encryption-mode", "cbc", "AES encryption mode (cbc, legacy)")
-	f.String("key-rijndael", "", "Rijndael encryption key")
-	f.String("key-base64-rijndael", "", "Base64-encoded Rijndael key")
+	f.String("key", "", "Encryption key (passphrase)")
+	f.String("key-base64", "", "Base64-encoded encryption key")
 	f.String("key-hmac", "", "HMAC key")
 	f.String("key-base64-hmac", "", "Base64-encoded HMAC key")
 	f.Bool("use-hmac", true, "Enable HMAC authentication")
@@ -117,11 +118,12 @@ func setupFlags() *pflag.FlagSet {
 	f.Bool("no-rc-file", false, "Skip .fwknoprc")
 	f.Bool("save-rc-stanza", false, "Save args to rc stanza")
 	f.Bool("stanza-list", false, "List stanzas in rc file")
+	f.String("convert-rc", "", "Convert legacy .fwknoprc to YAML and print to stdout")
 
 	// Modes
 	f.BoolP("test", "T", false, "Build packet but don't send")
 	f.CountP("verbose", "v", "Verbose output (repeatable)")
-	f.BoolP("key-gen", "k", false, "Generate Rijndael + HMAC keys")
+	f.BoolP("key-gen", "k", false, "Generate encryption + HMAC keys")
 	f.BoolP("version", "V", false, "Print version")
 	f.BoolP("help", "h", false, "Print usage")
 
@@ -207,13 +209,13 @@ func loadConfig(args []string) (*clientConfig, error) {
 
 // resolveEncKey returns the encryption key bytes from config.
 func (c *clientConfig) resolveEncKey() ([]byte, error) {
-	if c.KeyBase64Rijn != "" {
-		return base64.StdEncoding.DecodeString(c.KeyBase64Rijn)
+	if c.KeyBase64 != "" {
+		return base64.StdEncoding.DecodeString(c.KeyBase64)
 	}
-	if c.KeyRijndael != "" {
-		return []byte(c.KeyRijndael), nil
+	if c.Key != "" {
+		return []byte(c.Key), nil
 	}
-	return nil, fmt.Errorf("no encryption key specified (use --key-rijndael or --key-base64-rijndael)")
+	return nil, fmt.Errorf("no encryption key specified (use --key or --key-base64)")
 }
 
 // resolveHMACKey returns the HMAC key bytes from config, or nil if HMAC is disabled.
@@ -244,9 +246,9 @@ func resolveDigestType(s string) (fkospa.DigestType, error) {
 	case "sha512":
 		return fkospa.DigestSHA512, nil
 	case "sha3_256", "sha3-256":
-		return fkospa.DigestSHA3256, nil
+		return fkospa.DigestSHA3_256, nil
 	case "sha3_512", "sha3-512":
-		return fkospa.DigestSHA3512, nil
+		return fkospa.DigestSHA3_512, nil
 	default:
 		return 0, fmt.Errorf("unknown digest type: %s", s)
 	}
@@ -266,9 +268,9 @@ func resolveHMACType(s string) (fkospa.HMACType, error) {
 	case "sha512":
 		return fkospa.HMACSHA512, nil
 	case "sha3_256", "sha3-256":
-		return fkospa.HMACSHA3256, nil
+		return fkospa.HMACSHA3_256, nil
 	case "sha3_512", "sha3-512":
-		return fkospa.HMACSHA3512, nil
+		return fkospa.HMACSHA3_512, nil
 	default:
 		return 0, fmt.Errorf("unknown HMAC type: %s", s)
 	}
@@ -278,9 +280,9 @@ func resolveHMACType(s string) (fkospa.HMACType, error) {
 func resolveEncMode(s string) (fkospa.EncryptionMode, error) {
 	switch strings.ToLower(s) {
 	case "cbc":
-		return fkospa.EncModeCBC, nil
+		return fkospa.EncryptionModeCBC, nil
 	case "legacy":
-		return fkospa.EncModeCBCLegacyIV, nil
+		return fkospa.EncryptionModeCBCLegacy, nil
 	default:
 		return 0, fmt.Errorf("unknown encryption mode: %s (use cbc or legacy)", s)
 	}

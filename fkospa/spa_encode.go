@@ -107,10 +107,10 @@ func (m *Message) Encrypt(encKey []byte, hmacKey []byte) (string, error) {
 	b64Ciphertext := B64Encode(ciphertext)
 
 	// The wire format strips the first 10 chars ("U2FsdGVkX1") since they
-	// are a constant prefix for Rijndael encryption. The HMAC, however,
+	// are a constant prefix for AES encryption. The HMAC, however,
 	// is computed on the FULL base64 string including the prefix.
 	// See fko_get_spa_data() in the C code.
-	strippedCiphertext := b64Ciphertext[len(B64RijndaelSalt):]
+	strippedCiphertext := b64Ciphertext[len(B64SaltPrefix):]
 
 	if len(hmacKey) == 0 {
 		return strippedCiphertext, nil

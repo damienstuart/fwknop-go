@@ -71,6 +71,19 @@ func run(args []string) error {
 	replay := newReplayCache(replayTTL)
 	logger.Info("Replay cache initialized (TTL: %s)", replayTTL)
 
+	// Set up firewall manager.
+	fm, err := newFirewallManager(cfg.Firewall, logger)
+	if err != nil {
+		return fmt.Errorf("firewall config: %w", err)
+	}
+
+	if err := fm.Validate(); err != nil {
+		return err
+	}
+	if err := fm.Init(); err != nil {
+		return err
+	}
+
 	// Write PID file.
 	if !cfg.Foreground {
 		if err := writePIDFile(cfg.PIDFile); err != nil {
@@ -88,6 +101,7 @@ func run(args []string) error {
 	go func() {
 		sig := <-sigCh
 		logger.Info("Received signal %v, shutting down...", sig)
+		fm.Shutdown()
 		os.Exit(0)
 	}()
 
@@ -96,7 +110,7 @@ func run(args []string) error {
 	}
 
 	// Start the UDP server (blocks).
-	return udpServer(cfg, stanzas, replay, logger)
+	return udpServer(cfg, stanzas, replay, logger, fm)
 }
 
 // writePIDFile writes the current process PID to the specified file.
