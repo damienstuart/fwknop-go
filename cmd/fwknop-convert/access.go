@@ -54,7 +54,8 @@ func parseAccessConfig(data []byte) ([]map[string]interface{}, []string) {
 
 		// Handle %include directives.
 		if strings.HasPrefix(line, "%include") {
-			warnings = append(warnings, fmt.Sprintf("line %d: %s directive not resolved; manually merge the included file", lineNum, strings.SplitN(line, " ", 2)[0]))
+			directive := strings.SplitN(line, " ", 2)[0]
+			warnings = append(warnings, fmt.Sprintf("line %d: %s directive not resolved; manually merge the included file", lineNum, directive))
 			continue
 		}
 
@@ -69,7 +70,6 @@ func parseAccessConfig(data []byte) ([]map[string]interface{}, []string) {
 
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		// Strip trailing semicolons.
 		value = strings.TrimRight(value, ";")
 		value = strings.TrimSpace(value)
 
@@ -87,20 +87,22 @@ func parseAccessConfig(data []byte) ([]map[string]interface{}, []string) {
 			current = make(map[string]interface{})
 		}
 
-		mappedKey := mapAccessKey(key)
-		if mappedKey == "" {
-			warnings = append(warnings, fmt.Sprintf("skipping unsupported key %s", key))
-			continue
-		}
+		upper := strings.ToUpper(key)
+		action := classifyAccessKey(upper)
 
-		// Handle special value conversions.
-		switch mappedKey {
-		case "open_ports":
-			current[mappedKey] = parsePortList(value)
-		case "require_source_address", "enable_cmd_exec":
-			current[mappedKey] = parseBool(value)
+		switch action.category {
+		case catConvert:
+			current[action.goKey] = value
+		case catConvertBool:
+			current[action.goKey] = parseBool(value)
+		case catConvertList:
+			current[action.goKey] = parsePortList(value)
+		case catIgnore:
+			// silently drop
+		case catWarn:
+			warnings = append(warnings, fmt.Sprintf("%s: key %s skipped", action.reason, key))
 		default:
-			current[mappedKey] = value
+			warnings = append(warnings, fmt.Sprintf("unrecognized key %s", key))
 		}
 	}
 
@@ -112,47 +114,84 @@ func parseAccessConfig(data []byte) ([]map[string]interface{}, []string) {
 	return stanzas, warnings
 }
 
-// mapAccessKey converts C-style access.conf keys to Go config key names.
-func mapAccessKey(key string) string {
-	switch strings.ToUpper(key) {
+const catConvertList keyCategory = 10 // maps to string list (comma-separated → YAML list)
+
+func classifyAccessKey(upper string) keyAction {
+	switch upper {
+	// --- Convert: direct mapping ---
 	case "SOURCE":
-		return "source"
-	case "OPEN_PORTS":
-		return "open_ports"
-	case "RESTRICT_PORTS":
-		return "" // warn
-	case "KEY":
-		return "key"
-	case "KEY_BASE64":
-		return "key_base64"
-	case "HMAC_KEY":
-		return "hmac_key"
-	case "HMAC_KEY_BASE64":
-		return "hmac_key_base64"
-	case "HMAC_DIGEST_TYPE":
-		return "hmac_digest_type"
-	case "ENCRYPTION_MODE":
-		return "encryption_mode"
-	case "FW_ACCESS_TIMEOUT":
-		return "access_timeout"
-	case "MAX_FW_TIMEOUT":
-		return "max_access_timeout"
-	case "REQUIRE_USERNAME":
-		return "require_username"
-	case "REQUIRE_SOURCE_ADDRESS":
-		return "require_source_address"
-	case "ENABLE_CMD_EXEC":
-		return "enable_cmd_exec"
-	case "CMD_EXEC_USER":
-		return "cmd_exec_user"
+		return keyAction{catConvert, "source", ""}
 	case "DESTINATION":
-		return "" // not used in Go version
+		return keyAction{catConvert, "destination", ""}
+	case "KEY":
+		return keyAction{catConvert, "key", ""}
+	case "KEY_BASE64":
+		return keyAction{catConvert, "key_base64", ""}
+	case "HMAC_KEY":
+		return keyAction{catConvert, "hmac_key", ""}
+	case "HMAC_KEY_BASE64":
+		return keyAction{catConvert, "hmac_key_base64", ""}
+	case "HMAC_DIGEST_TYPE":
+		return keyAction{catConvert, "hmac_digest_type", ""}
+	case "ENCRYPTION_MODE":
+		return keyAction{catConvert, "encryption_mode", ""}
+	case "FW_ACCESS_TIMEOUT":
+		return keyAction{catConvert, "access_timeout", ""}
+	case "MAX_FW_TIMEOUT":
+		return keyAction{catConvert, "max_access_timeout", ""}
+	case "REQUIRE_USERNAME":
+		return keyAction{catConvert, "require_username", ""}
+	case "CMD_EXEC_USER":
+		return keyAction{catConvert, "cmd_exec_user", ""}
+	case "CMD_EXEC_GROUP":
+		return keyAction{catConvert, "cmd_exec_group", ""}
+	case "CMD_SUDO_EXEC_USER":
+		return keyAction{catConvert, "cmd_sudo_exec_user", ""}
+	case "CMD_SUDO_EXEC_GROUP":
+		return keyAction{catConvert, "cmd_sudo_exec_group", ""}
+	case "ACCESS_EXPIRE":
+		return keyAction{catConvert, "access_expire", ""}
+	case "ACCESS_EXPIRE_EPOCH":
+		return keyAction{catConvert, "access_expire_epoch", ""}
+	case "CMD_CYCLE_OPEN":
+		return keyAction{catConvert, "cmd_cycle_open", ""}
+	case "CMD_CYCLE_CLOSE":
+		return keyAction{catConvert, "cmd_cycle_close", ""}
+	case "CMD_CYCLE_TIMER":
+		return keyAction{catConvert, "cmd_cycle_timer", ""}
+
+	// --- Convert: boolean ---
+	case "REQUIRE_SOURCE_ADDRESS", "REQUIRE_SOURCE":
+		return keyAction{catConvertBool, "require_source_address", ""}
+	case "ENABLE_CMD_EXEC":
+		return keyAction{catConvertBool, "enable_cmd_exec", ""}
+	case "ENABLE_CMD_SUDO_EXEC":
+		return keyAction{catConvertBool, "enable_cmd_sudo_exec", ""}
+	case "FORCE_NAT":
+		return keyAction{catConvertBool, "force_nat", ""}
+	case "FORCE_SNAT":
+		return keyAction{catConvertBool, "force_snat", ""}
+	case "FORCE_MASQUERADE":
+		return keyAction{catConvertBool, "force_masquerade", ""}
+	case "DISABLE_DNAT":
+		return keyAction{catConvertBool, "disable_dnat", ""}
+	case "FORWARD_ALL":
+		return keyAction{catConvertBool, "forward_all", ""}
+
+	// --- Convert: comma-separated lists ---
+	case "OPEN_PORTS":
+		return keyAction{catConvertList, "open_ports", ""}
+	case "RESTRICT_PORTS":
+		return keyAction{catConvertList, "restrict_ports", ""}
+
+	// --- Warn: GPG ---
+	case "GPG_HOME_DIR", "GPG_EXE", "GPG_DECRYPT_ID", "GPG_DECRYPT_PW",
+		"GPG_REQUIRE_SIG", "GPG_DISABLE_SIG", "GPG_IGNORE_SIG_VERIFY_ERROR",
+		"GPG_REMOTE_ID", "GPG_FINGERPRINT_ID", "GPG_ALLOW_NO_PW":
+		return keyAction{catWarn, "", "GPG support not available in Go fwknop"}
+
 	default:
-		// GPG and other unsupported keys.
-		if strings.HasPrefix(strings.ToUpper(key), "GPG_") {
-			return ""
-		}
-		return ""
+		return keyAction{catUnknown, "", ""}
 	}
 }
 
