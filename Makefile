@@ -33,11 +33,13 @@ install:  ## Install binaries to $GOPATH/bin
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknopd
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknop-convert
 
+TESTPKGS := $(shell $(GO) list ./... | grep -v /examples/)
+
 test:  ## Run all tests (may use cache)
-	$(GO) test ./...
+	$(GO) test $(TESTPKGS)
 
 retest:  ## Run all tests (no cache)
-	$(GO) test -count=1 ./...
+	$(GO) test -count=1 $(TESTPKGS)
 
 vet:  ## Run go vet
 	$(GO) vet ./...
