@@ -331,7 +331,7 @@ fmt.Printf("User: %s, Access: %s\n", msg.Username, msg.AccessMsg)
 | Digest | MD5, SHA1, SHA256 (default), SHA384, SHA512, SHA3-256, SHA3-512 |
 | HMAC | MD5, SHA1, SHA256 (default), SHA384, SHA512, SHA3-256, SHA3-512 |
 
-See `go doc github.com/damienstuart/fwknop-go/fkospa` for the full API reference.
+See the [fkospa Developer Guide](doc/fkospa-guide.md) for comprehensive documentation, or `go doc github.com/damienstuart/fwknop-go/fkospa` for the API reference.
 
 ---
 
