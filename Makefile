@@ -1,5 +1,6 @@
 MODULE   := github.com/damienstuart/fwknop-go
 BIN_DIR  := bin
+VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
 CLIENT   := $(BIN_DIR)/fwknop
 SERVER   := $(BIN_DIR)/fwknopd
@@ -7,7 +8,7 @@ CONVERT  := $(BIN_DIR)/fwknop-convert
 
 GO       := go
 GOFLAGS  ?=
-LDFLAGS  ?=
+LDFLAGS  ?= -X main.version=$(VERSION) -X main.serverVersion=$(VERSION)
 
 .PHONY: all lib client server convert clean test retest vet fmt tidy install help
 

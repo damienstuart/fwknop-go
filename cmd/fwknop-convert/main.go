@@ -15,6 +15,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// version is set at build time via -ldflags "-X main.version=..."
+var version = "dev"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "fwknop-convert: %v\n", err)
@@ -32,6 +35,7 @@ func run(args []string) error {
 	convType := f.StringP("type", "t", "", "Conversion type: client, server, or access")
 	input := f.StringP("input", "i", "", "Input file path")
 	help := f.BoolP("help", "h", false, "Print usage")
+	showVersion := f.BoolP("version", "V", false, "Print version")
 
 	if err := f.Parse(args); err != nil {
 		return err
@@ -39,6 +43,11 @@ func run(args []string) error {
 
 	if *help {
 		f.Usage()
+		return nil
+	}
+
+	if *showVersion {
+		fmt.Printf("fwknop-convert version %s\n", version)
 		return nil
 	}
 

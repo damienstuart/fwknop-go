@@ -23,8 +23,10 @@ const (
 	defaultBindAddr   = "0.0.0.0"
 	defaultMaxAge     = 120
 	defaultActionDir  = "/etc/fwknop/actions"
-	serverVersion     = "0.1.0"
 )
+
+// serverVersion is set at build time via -ldflags "-X main.serverVersion=..."
+var serverVersion = "dev"
 
 // serverConfig holds all resolved configuration for fwknopd.
 type serverConfig struct {

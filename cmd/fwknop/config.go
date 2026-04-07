@@ -18,8 +18,10 @@ import (
 const (
 	defaultServerPort = 62201
 	defaultResolveURL = "https://api.ipify.org"
-	version           = "0.1.0"
 )
+
+// version is set at build time via -ldflags "-X main.version=..."
+var version = "dev"
 
 // clientConfig holds all resolved configuration for the fwknop client.
 type clientConfig struct {
@@ -144,6 +146,16 @@ func loadConfig(args []string) (*clientConfig, error) {
 	if help {
 		flags.Usage()
 		os.Exit(0)
+	}
+
+	// Short-circuit for informational flags that don't need config.
+	showVersion, _ := flags.GetBool("version")
+	keyGen, _ := flags.GetBool("key-gen")
+	if showVersion || keyGen {
+		var cfg clientConfig
+		cfg.ShowVersion = showVersion
+		cfg.KeyGen = keyGen
+		return &cfg, nil
 	}
 
 	// Determine rc file path.
