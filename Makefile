@@ -1,6 +1,6 @@
 MODULE   := github.com/damienstuart/fwknop-go
 BIN_DIR  := bin
-VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+GIT_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
 CLIENT   := $(BIN_DIR)/fwknop
 SERVER   := $(BIN_DIR)/fwknopd
@@ -8,7 +8,7 @@ CONVERT  := $(BIN_DIR)/fwknop-convert
 
 GO       := go
 GOFLAGS  ?=
-LDFLAGS  ?= -X main.version=$(VERSION) -X main.serverVersion=$(VERSION)
+LDFLAGS  ?=
 
 .PHONY: all lib client server convert clean test retest vet fmt tidy install help
 
@@ -27,12 +27,12 @@ server:  ## Build the fwknopd server
 
 convert:  ## Build the fwknop-convert utility
 	@mkdir -p $(BIN_DIR)
-	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(CONVERT) ./cmd/fwknop-convert
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS) -X main.version=$(GIT_VERSION)" -o $(CONVERT) ./cmd/fwknop-convert
 
 install:  ## Install binaries to $GOPATH/bin
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknop
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknopd
-	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknop-convert
+	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS) -X main.version=$(GIT_VERSION)" ./cmd/fwknop-convert
 
 TESTPKGS := $(shell $(GO) list ./... | grep -v /examples/)
 

@@ -20,8 +20,8 @@ const (
 	defaultResolveURL = "https://api.ipify.org"
 )
 
-// version is set at build time via -ldflags "-X main.version=..."
-var version = "dev"
+// version can be overridden at build time via -ldflags "-X main.version=..."
+var version = "0.1.0"
 
 // clientConfig holds all resolved configuration for the fwknop client.
 type clientConfig struct {
