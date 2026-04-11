@@ -64,6 +64,66 @@ fwknop-go/
 └── README.md
 ```
 
+## Building
+
+### Prerequisites
+
+- Go 1.22.0 or later
+
+### Build all binaries
+
+```bash
+make all        # Build fwknop, fwknopd, and fwknop-convert into bin/
+```
+
+Individual targets are also available:
+
+```bash
+make client     # Build bin/fwknop
+make server     # Build bin/fwknopd
+make convert    # Build bin/fwknop-convert
+```
+
+Other useful targets:
+
+```bash
+make test       # Run all tests
+make vet        # Run go vet
+make fmt        # Format code
+make tidy       # Tidy module dependencies
+make install    # Install binaries to $GOPATH/bin
+```
+
+### Versioning
+
+Each binary (fwknop, fwknopd, fwknop-convert) is versioned independently.
+The source code contains a default version (e.g. `0.1.0`), and the Go
+toolchain automatically embeds VCS metadata (commit hash, timestamp, dirty
+flag) into the binary at build time via `runtime/debug.ReadBuildInfo()`.
+
+Running `fwknop -V` produces output like:
+
+```
+fwknop (Go) version 0.1.0 (commit: fa2a972fabb4, built: 2026-04-07T03:11:46Z) (SPA protocol 3.0.0)
+```
+
+To set a specific version for a release build, override `LDFLAGS`:
+
+```bash
+make client  LDFLAGS="-s -w -X main.version=1.3.0"
+make server  LDFLAGS="-s -w -X main.version=2.0.0"
+make convert LDFLAGS="-s -w -X main.version=1.1.0"
+```
+
+The fkospa library has its own version, set from the latest git tag via the
+`lib` target:
+
+```bash
+make lib        # Build fkospa with version from git tag
+```
+
+---
+
 ## Quick Start
 
 ### Generate keys

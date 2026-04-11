@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/damienstuart/fwknop-go/fkospa"
+	"github.com/damienstuart/fwknop-go/internal/buildinfo"
 )
 
 func main() {
@@ -27,7 +28,8 @@ func run(args []string) error {
 
 	// Handle informational commands that exit early.
 	if cfg.ShowVersion {
-		fmt.Printf("fwknop (Go) version %s (SPA protocol %s)\n", version, fkospa.ProtocolVersion)
+		bi := buildinfo.GetInfo(version)
+		fmt.Printf("fwknop (Go) version %s (SPA protocol %s)\n", bi, fkospa.ProtocolVersion)
 		return nil
 	}
 

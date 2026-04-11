@@ -8,14 +8,14 @@ CONVERT  := $(BIN_DIR)/fwknop-convert
 
 GO       := go
 GOFLAGS  ?=
-LDFLAGS  ?=
+LDFLAGS  ?= -s -w
 
 .PHONY: all lib client server convert clean test retest vet fmt tidy install help
 
 all: client server convert  ## Build all binaries
 
-lib:  ## Build and verify the fkospa library
-	$(GO) build $(GOFLAGS) ./fkospa/...
+lib:  ## Build and verify the fkospa library (version from git tag)
+	$(GO) build $(GOFLAGS) -ldflags "-X $(MODULE)/fkospa.Version=$(GIT_VERSION)" ./fkospa/...
 
 client:  ## Build the fwknop client
 	@mkdir -p $(BIN_DIR)
@@ -27,12 +27,12 @@ server:  ## Build the fwknopd server
 
 convert:  ## Build the fwknop-convert utility
 	@mkdir -p $(BIN_DIR)
-	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS) -X main.version=$(GIT_VERSION)" -o $(CONVERT) ./cmd/fwknop-convert
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(CONVERT) ./cmd/fwknop-convert
 
 install:  ## Install binaries to $GOPATH/bin
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknop
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknopd
-	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS) -X main.version=$(GIT_VERSION)" ./cmd/fwknop-convert
+	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/fwknop-convert
 
 TESTPKGS := $(shell $(GO) list ./... | grep -v /examples/)
 

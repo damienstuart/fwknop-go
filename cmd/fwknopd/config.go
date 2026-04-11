@@ -25,8 +25,7 @@ const (
 	defaultActionDir  = "/etc/fwknop/actions"
 )
 
-// serverVersion can be overridden at build time via -ldflags "-X main.serverVersion=..."
-var serverVersion = "0.1.0"
+var version = "0.1.0"
 
 // serverConfig holds all resolved configuration for fwknopd.
 type serverConfig struct {

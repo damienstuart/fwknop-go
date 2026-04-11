@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/damienstuart/fwknop-go/fkospa"
+	"github.com/damienstuart/fwknop-go/internal/buildinfo"
 )
 
 func main() {
@@ -28,8 +29,10 @@ func run(args []string) error {
 		return err
 	}
 
+	bi := buildinfo.GetInfo(version)
+
 	if cfg.ShowVersion {
-		fmt.Printf("fwknopd (Go) version %s (SPA protocol %s)\n", serverVersion, fkospa.ProtocolVersion)
+		fmt.Printf("fwknopd (Go) version %s (SPA protocol %s)\n", bi, fkospa.ProtocolVersion)
 		return nil
 	}
 
@@ -63,7 +66,7 @@ func run(args []string) error {
 	}
 	defer logger.Close()
 
-	logger.Info("Starting fwknopd (Go) version %s", serverVersion)
+	logger.Info("Starting fwknopd (Go) version %s", bi)
 	logger.Info("Loaded %d access stanza(s) from %s", len(stanzas), cfg.AccessFile)
 
 	// Set up replay cache with TTL matching max SPA packet age.

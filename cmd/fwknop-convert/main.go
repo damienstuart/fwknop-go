@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/damienstuart/fwknop-go/internal/buildinfo"
 	"github.com/spf13/pflag"
 )
 
-// version is set at build time via -ldflags "-X main.version=..."
-var version = "dev"
+var version = "0.1.0"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -47,7 +47,8 @@ func run(args []string) error {
 	}
 
 	if *showVersion {
-		fmt.Printf("fwknop-convert version %s\n", version)
+		bi := buildinfo.GetInfo(version)
+		fmt.Printf("fwknop-convert version %s\n", bi)
 		return nil
 	}
 
