@@ -208,7 +208,7 @@ default:
   destination: 192.168.1.100
   access: tcp/22
   key_base64: <base64-key>
-  key_base64_hmac: <base64-hmac-key>
+  hmac_key_base64: <base64-hmac-key>
 
 production:
   destination: prod.example.com
