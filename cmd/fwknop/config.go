@@ -46,7 +46,7 @@ type clientConfig struct {
 	Key       string `koanf:"key"`
 	KeyBase64 string `koanf:"key_base64"`
 	KeyHMAC          string `koanf:"key_hmac"`
-	KeyBase64HMAC    string `koanf:"key_base64_hmac"`
+	KeyBase64HMAC    string `koanf:"hmac_key_base64"`
 	UseHMAC          bool   `koanf:"use_hmac"`
 
 	// IP resolution

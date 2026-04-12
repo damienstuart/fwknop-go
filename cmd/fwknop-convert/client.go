@@ -135,7 +135,7 @@ func mapClientKey(key string) string {
 	case "HMAC_KEY":
 		return "key_hmac"
 	case "HMAC_KEY_BASE64":
-		return "key_base64_hmac"
+		return "hmac_key_base64"
 	case "USE_HMAC":
 		return "use_hmac"
 	case "FW_TIMEOUT":

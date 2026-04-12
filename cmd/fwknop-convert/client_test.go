@@ -100,7 +100,7 @@ func TestMapClientKey(t *testing.T) {
 		{"KEY", "key"},
 		{"KEY_BASE64", "key_base64"},
 		{"HMAC_KEY", "key_hmac"},
-		{"HMAC_KEY_BASE64", "key_base64_hmac"},
+		{"HMAC_KEY_BASE64", "hmac_key_base64"},
 		{"FW_TIMEOUT", "fw_timeout"},
 		{"RESOLVE_IP_HTTPS", "resolve_ip"},
 		{"UNKNOWN", ""},
