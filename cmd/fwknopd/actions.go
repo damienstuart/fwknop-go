@@ -278,11 +278,14 @@ func allowsPort(stanza *accessStanza, proto, port string) bool {
 
 // buildTemplateContext creates a templateContext from a decoded SPA message.
 func buildTemplateContext(msg *fkospa.Message, srcIP string, stanza *accessStanza) templateContext {
-	proto, port := parseAccessMsg(msg.AccessMsg)
+	ip, proto, port := parseAccessMsg(msg.AccessMsg)
 	timeout := effectiveTimeout(msg, stanza)
 
+	if ip == "0.0.0.0" {
+		ip = srcIP
+	}
 	return templateContext{
-		SourceIP:  srcIP,
+		SourceIP:  ip,
 		Proto:     proto,
 		Port:      port,
 		Username:  msg.Username,
@@ -306,18 +309,19 @@ func effectiveTimeout(msg *fkospa.Message, stanza *accessStanza) int {
 }
 
 // parseAccessMsg extracts proto and port from an access message like "IP,tcp/22".
-func parseAccessMsg(accessMsg string) (proto, port string) {
+func parseAccessMsg(accessMsg string) (ip, proto, port string) {
 	// Format: "IP,proto/port"
 	commaIdx := strings.Index(accessMsg, ",")
 	if commaIdx < 0 {
-		return "", ""
+		return "", "", ""
 	}
+	accessIp := accessMsg[:commaIdx]
 	protoPort := accessMsg[commaIdx+1:]
 	slashIdx := strings.Index(protoPort, "/")
 	if slashIdx < 0 {
-		return protoPort, ""
+		return accessIp, protoPort, ""
 	}
-	return protoPort[:slashIdx], protoPort[slashIdx+1:]
+	return accessIp, protoPort[:slashIdx], protoPort[slashIdx+1:]
 }
 
 // loadActionTemplate reads an action template file and returns its config.
