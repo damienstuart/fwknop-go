@@ -287,21 +287,22 @@ func TestExecuteCommandFailure(t *testing.T) {
 func TestParseAccessMsg(t *testing.T) {
 	tests := []struct {
 		input     string
+		wantIP    string
 		wantProto string
 		wantPort  string
 	}{
-		{"192.168.1.1,tcp/22", "tcp", "22"},
-		{"10.0.0.1,udp/53", "udp", "53"},
-		{"10.0.0.1,tcp/443", "tcp", "443"},
-		{"bad-format", "", ""},
-		{"10.0.0.1,tcp", "tcp", ""},
+		{"192.168.1.1,tcp/22", "192.168.1.1", "tcp", "22"},
+		{"10.0.0.1,udp/53", "10.0.0.1", "udp", "53"},
+		{"0.0.0.0,tcp/443", "0.0.0.0", "tcp", "443"},
+		{"bad-format", "", "", ""},
+		{"10.0.0.1,tcp", "10.0.0.1", "tcp", ""},
 	}
 
 	for _, tc := range tests {
-		proto, port := parseAccessMsg(tc.input)
-		if proto != tc.wantProto || port != tc.wantPort {
-			t.Errorf("parseAccessMsg(%q) = (%q, %q), want (%q, %q)",
-				tc.input, proto, port, tc.wantProto, tc.wantPort)
+		ip, proto, port := parseAccessMsg(tc.input)
+		if ip != tc.wantIP || proto != tc.wantProto || port != tc.wantPort {
+			t.Errorf("parseAccessMsg(%q) = (%q, %q, %q), want (%q, %q, %q)",
+				tc.input, ip, proto, port, tc.wantIP, tc.wantProto, tc.wantPort)
 		}
 	}
 }
@@ -379,6 +380,38 @@ func TestBuildTemplateContext(t *testing.T) {
 	}
 	if ctx.NATAccess != "192.168.1.100,22" {
 		t.Errorf("NATAccess = %q", ctx.NATAccess)
+	}
+}
+
+func TestBuildTemplateContextZeroIPFallback(t *testing.T) {
+	msg := &fkospa.Message{
+		AccessMsg:     "0.0.0.0,tcp/22",
+		Username:      "bob",
+		Timestamp:     time.Unix(1700000000, 0),
+		ClientTimeout: 30,
+	}
+	stanza := &accessStanza{AccessTimeout: 30, MaxAccessTimeout: 120}
+
+	ctx := buildTemplateContext(msg, "172.16.0.50", stanza)
+
+	if ctx.SourceIP != "172.16.0.50" {
+		t.Errorf("SourceIP = %q, want packet srcIP %q when AccessMsg has 0.0.0.0", ctx.SourceIP, "172.16.0.50")
+	}
+}
+
+func TestBuildTemplateContextExplicitIP(t *testing.T) {
+	msg := &fkospa.Message{
+		AccessMsg:     "192.168.1.100,tcp/22",
+		Username:      "alice",
+		Timestamp:     time.Unix(1700000000, 0),
+		ClientTimeout: 30,
+	}
+	stanza := &accessStanza{AccessTimeout: 30, MaxAccessTimeout: 120}
+
+	ctx := buildTemplateContext(msg, "10.0.0.5", stanza)
+
+	if ctx.SourceIP != "192.168.1.100" {
+		t.Errorf("SourceIP = %q, want AccessMsg IP %q when it is not 0.0.0.0", ctx.SourceIP, "192.168.1.100")
 	}
 }
 
